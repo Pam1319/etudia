@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+<title>ÉtudIA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<style>
+  :root{
+    --cream:#FEFCF9;
+    --text:#4A4638;
+    --text-soft:#9C9484;
+    --text-faint:#B0A996;
+    --purple:#A78BFA;
+    --input-bg:#FBF8F3;
+    --card-shadow: 0 8px 20px -8px rgba(0,0,0,0.08);
+    --modal-shadow: 0 20px 60px -20px rgba(0,0,0,0.3);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Nunito', sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    min-height:100vh;
+  }
+  .display{ font-family:'Quicksand', sans-serif; }
+  .wrap{ max-width: 640px; margin:0 auto; padding: 24px 20px 60px; }
+
+  .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand img{ width:48px; height:48px; border-radius:16px; }
+  .brand h1{ font-size:22px; margin:0; }
+  .gear-btn{
+    width:42px; height:42px; border-radius:999px; border:none; background:#fff;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    box-shadow: var(--card-shadow); transition: background .15s;
+  }
+  .gear-btn.active{ background: var(--purple); }
+  .gear-btn svg{ stroke:#9C9484; }
+  .gear-btn.active svg{ stroke:#fff; }
+
+  .subtitle{ color: var(--text-soft); margin: 10px 0 26px; font-size:15px; }
+
+  .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+
+  .child-card{
+    position:relative; border-radius:26px; padding:22px 18px; text-align:center;
+    box-shadow: var(--card-shadow); cursor:pointer; border:none;
+    transition: transform .15s ease;
+  }
+  .child-card:active{ transform: scale(0.97); }
+  .child-emoji{
+    width:64px; height:64px; border-radius:999px; background:rgba(255,255,255,0.6);
+    display:flex; align-items:center; justify-content:center; font-size:30px; margin:0 auto 10px;
+  }
+  .child-name{ font-weight:700; font-size:17px; display:block; }
+  .child-meta{ font-size:12px; color:#6B6558; font-weight:700; display:block; margin-top:4px; }
+
+  .child-gear{
+    position:absolute; top:10px; right:10px; width:28px; height:28px; border-radius:999px;
+    background: rgba(255,255,255,0.75); border:none; display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+
+  .add-card{
+    border-radius:26px; padding:22px 18px; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:6px; border:2px dashed #D9D2C4; background:none; cursor:pointer; color:#B0A996;
+    min-height:132px;
+  }
+  .add-card .plus{ font-size:26px; line-height:1; }
+  .add-card span.label{ font-size:13px; font-weight:700; }
+
+  .empty-state{ text-align:center; padding: 50px 10px; }
+  .empty-state .emoji{ font-size:48px; margin-bottom:14px; }
+  .empty-state h2{ font-size:18px; margin:0 0 6px; }
+  .empty-state p{ color: var(--text-soft); font-size:14px; margin:0 0 22px; }
+  .btn-primary{
+    background: var(--purple); color:#fff; border:none; border-radius:999px;
+    padding: 12px 22px; font-family:'Quicksand',sans-serif; font-weight:700; font-size:14px; cursor:pointer;
+  }
+
+  /* Modal */
+  .overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.22); display:flex; align-items:flex-end;
+    justify-content:center; padding: 0 16px; z-index:30;
+  }
+  @media (min-width:520px){ .overlay{ align-items:center; } }
+  .modal{
+    width:100%; max-width:440px; background:#fff; border-radius:26px 26px 0 0; padding:24px;
+    box-shadow: var(--modal-shadow); max-height:88vh; overflow-y:auto;
+  }
+  @media (min-width:520px){ .modal{ border-radius:26px; } }
+  .modal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+  .modal-head h3{ margin:0; font-size:18px; }
+  .close-btn{ background:#F5F2EC; border:none; width:30px; height:30px; border-radius:999px; cursor:pointer; }
+
+  label.field-label{
+    display:block; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.03em;
+    color: var(--text-faint); margin-bottom:6px;
+  }
+  .field{ margin-bottom:16px; }
+  input[type=text], input[type=number], select{
+    width:100%; border:none; background: var(--input-bg); border-radius:14px; padding:11px 14px;
+    font-size:14px; font-family:'Nunito',sans-serif; outline:none; color:var(--text);
+  }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+  .style-tags{ display:flex; flex-wrap:wrap; gap:8px; }
+  .tag{
+    padding:7px 13px; border-radius:999px; font-size:12px; font-weight:700; cursor:pointer;
+    background:#F5F2EC; color:#9C9484; border:none; font-family:'Nunito',sans-serif;
+  }
+  .tag.active{ background: var(--purple); color:#fff; }
+
+  .swatches{ display:flex; gap:10px; flex-wrap:wrap; }
+  .swatch{
+    width:34px; height:34px; border-radius:999px; border:none; cursor:pointer; padding:0;
+  }
+  .swatch.active{ outline:2px solid #4A4638; outline-offset:2px; }
+
+  .emoji-grid{ display:flex; flex-wrap:wrap; gap:8px; }
+  .emoji-opt{
+    width:40px; height:40px; border-radius:12px; border:none; background:#F5F2EC; font-size:18px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .emoji-opt.active{ background: var(--purple); }
+
+  .btn-block{
+    width:100%; border:none; border-radius:16px; padding:13px; font-family:'Quicksand',sans-serif;
+    font-weight:700; font-size:14px; cursor:pointer; margin-top:4px;
+  }
+  .btn-save{ background: var(--purple); color:#fff; }
+  .btn-danger{ background:#F8E7E0; color:#B5674A; display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; }
+
+  /* Espace enfant (placeholder pour la suite) */
+  .child-space{ text-align:center; padding: 60px 20px; color: var(--text-soft); }
+  .back-link{
+    display:inline-flex; align-items:center; gap:6px; background:none; border:none; color:var(--text-soft);
+    font-family:'Nunito',sans-serif; font-size:14px; cursor:pointer; margin-bottom:20px;
+  }
+
+  /* Chapitres */
+  .chapter-row{
+    display:flex; align-items:center; justify-content:space-between; background:#fff; border-radius:18px;
+    padding:14px 16px; margin-bottom:12px; box-shadow: var(--card-shadow);
+  }
+  .chapter-info{ display:flex; align-items:center; gap:14px; flex:1; text-align:left; background:none; border:none; cursor:pointer; padding:0; }
+  .chapter-name{ font-weight:700; font-size:15px; color:var(--text); display:block; }
+  .status-badge{ display:inline-block; font-size:11px; font-weight:800; padding:3px 10px; border-radius:999px; margin-top:4px; }
+  .chapter-gear{
+    width:32px; height:32px; border-radius:999px; background:#F5F2EC; border:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-left:8px;
+  }
+
+  /* Import + tabs */
+  .import-block{
+    border-radius:22px; padding:16px; margin-bottom:18px; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:12px; background:#F5F2EC;
+  }
+  .import-btn{
+    display:flex; align-items:center; gap:8px; padding:10px 16px; border-radius:999px; border:none;
+    background:rgba(255,255,255,0.85); font-size:13px; font-weight:700; cursor:pointer; font-family:'Nunito',sans-serif;
+  }
+  .analyse-btn{ color:#fff; }
+  .tabs{ display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
+  .tab-btn{
+    display:flex; align-items:center; gap:6px; padding:9px 14px; border-radius:999px; border:none;
+    background:#fff; color:var(--text-soft); font-size:13px; font-weight:700; cursor:pointer; font-family:'Nunito',sans-serif;
+    box-shadow: var(--card-shadow);
+  }
+  .tab-btn.active{ background: var(--purple); color:#fff; }
+  .tab-content{
+    background:#fff; border-radius:22px; padding:22px; box-shadow: var(--card-shadow); font-size:14px; color:#6B6558;
+    min-height:120px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ECRAN LISTE DES ENFANTS -->
+  <div id="screen-children">
+    <div class="topbar">
+      <div class="brand">
+        <img src="data:image/jpeg;base64,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" alt="ÉtudIA" />
+        <h1 class="display">Coucou&nbsp;! 👋</h1>
+      </div>
+      <button class="gear-btn" id="settingsToggle" onclick="toggleSettings()" title="Réglages">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </div>
+    <p class="subtitle" id="subtitleText">Pour qui on révise aujourd'hui ?</p>
+
+    <div id="childrenArea"></div>
+  </div>
+
+  <!-- ESPACE ENFANT : matières -->
+  <div id="screen-space" style="display:none;">
+    <div class="topbar">
+      <button class="back-link" onclick="goHome()" style="margin:0;">← Retour</button>
+    </div>
+    <div class="brand" style="margin: 10px 0 4px;">
+      <div class="child-emoji" id="spaceEmoji" style="width:44px; height:44px; font-size:22px; margin:0; background:#F5F2EC;"></div>
+      <h1 class="display" id="spaceName" style="font-size:20px;"></h1>
+    </div>
+    <p class="subtitle" id="spaceSubtitle">Choisis une matière pour commencer ✏️</p>
+
+    <div id="subjectsArea"></div>
+  </div>
+
+  <!-- ECRAN CHAPITRES -->
+  <div id="screen-chapters" style="display:none;">
+    <div class="topbar">
+      <button class="back-link" onclick="goSubjects()" style="margin:0;">← Retour</button>
+    </div>
+    <div class="brand" style="margin: 10px 0 4px;">
+      <div id="chaptersIcon" style="width:44px; height:44px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:22px;"></div>
+      <h1 class="display" id="chaptersSubjectName" style="font-size:20px;"></h1>
+    </div>
+    <div style="display:flex; justify-content:flex-end; margin: 4px 0 18px;">
+      <button class="btn-primary display" onclick="openChapterEditor('new')">✨ Nouveau chapitre</button>
+    </div>
+    <div id="chaptersArea"></div>
+  </div>
+
+  <!-- ECRAN CONTENU D'UN CHAPITRE -->
+  <div id="screen-chapter" style="display:none;">
+    <div class="topbar">
+      <button class="back-link" onclick="goChapters()" style="margin:0;">← Retour</button>
+    </div>
+    <h1 class="display" id="chapterTitle" style="font-size:19px; margin:8px 0 16px;"></h1>
+
+    <div id="importBlock" class="import-block"></div>
+
+    <div class="tabs" id="chapterTabs"></div>
+    <div class="tab-content" id="chapterContent"></div>
+  </div>
+
+</div>
+
+<!-- MODAL CHAPITRE (creation + edition) -->
+<div class="overlay" id="chapterOverlay" style="display:none;">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 class="display" id="chapterEditorTitle">Nouveau chapitre</h3>
+      <button class="close-btn" onclick="closeChapterEditor()">✕</button>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Nom du chapitre</label>
+      <input type="text" id="ch-name" placeholder="Ex : Le futur simple, Les fractions..." autofocus />
+    </div>
+
+    <button class="btn-block btn-save" id="chapterSaveBtn" onclick="saveChapter()">Créer le chapitre</button>
+    <button class="btn-block btn-danger" id="chapterDeleteBtn" style="display:none;" onclick="deleteChapter()">
+      🗑️ Supprimer ce chapitre
+    </button>
+  </div>
+</div>
+
+<!-- MODAL MATIERE -->
+<div class="overlay" id="subjectOverlay" style="display:none;">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 class="display" id="subjectEditorTitle">Nouvelle carte</h3>
+      <button class="close-btn" onclick="closeSubjectEditor()">✕</button>
+    </div>
+
+    <div style="display:flex; justify-content:center; margin-bottom:18px;">
+      <div id="subjectPreview" style="width:60px; height:60px; border-radius:20px; display:flex; align-items:center; justify-content:center; font-size:28px;"></div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Nom de la matière</label>
+      <input type="text" id="s-name" placeholder="Ex : Musique, Latin, Sport..." />
+    </div>
+
+    <div class="field">
+      <label class="field-label">Couleur</label>
+      <div class="swatches" id="subjectSwatches"></div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Icône</label>
+      <div class="emoji-grid" id="subjectEmojiGrid"></div>
+    </div>
+
+    <button class="btn-block btn-save" onclick="saveSubject()">Enregistrer</button>
+    <button class="btn-block btn-danger" id="subjectDeleteBtn" style="display:none;" onclick="deleteSubject()">
+      🗑️ Supprimer cette carte
+    </button>
+  </div>
+</div>
+
+<!-- MODAL PROFIL ENFANT -->
+<div class="overlay" id="editorOverlay" style="display:none;">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 class="display" id="editorTitle">Nouveau profil</h3>
+      <button class="close-btn" onclick="closeEditor()">✕</button>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Prénom</label>
+      <input type="text" id="f-name" placeholder="Prénom" />
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label class="field-label">Âge</label>
+        <input type="number" id="f-age" placeholder="Âge" />
+      </div>
+      <div class="field">
+        <label class="field-label">Classe</label>
+        <select id="f-classe">
+          <option value="">—</option>
+          <option>CP</option><option>CE1</option><option>CE2</option><option>CM1</option><option>CM2</option>
+          <option>6ème</option><option>5ème</option><option>4ème</option><option>3ème</option>
+          <option>2nde</option><option>1ère</option><option>Terminale</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Comment tu apprends le mieux</label>
+      <div class="style-tags" id="styleTags"></div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Couleur</label>
+      <div class="swatches" id="swatches"></div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Icône</label>
+      <div class="emoji-grid" id="emojiGrid"></div>
+    </div>
+
+    <button class="btn-block btn-save" onclick="saveChild()">Enregistrer</button>
+    <button class="btn-block btn-danger" id="resetBtn" style="display:none;" onclick="resetChildData()">
+      🗑️ Réinitialiser pour la nouvelle année
+    </button>
+  </div>
+</div>
+
+<script>
+/* ---------- Données de référence ---------- */
+const COLORS = ["#BFE3F5", "#F6D6E0", "#EAE1F5", "#DCEFDD", "#FDEBC8", "#F5DEE8"];
+const EMOJIS = ["🦊","🐰","🐨","🐯","🦁","🐼","🐸","🦄","🌟","🚀"];
+const SUBJECT_EMOJIS = ["📐","📖","🖋️","🏛️","🌍","🧪","🌿","🇬🇧","🇪🇸","🇮🇹","💻"];
+const LEARNING_STYLES = [
+  { id:"mnemo", label:"Moyens mnémotechniques" },
+  { id:"points", label:"Par points plutôt qu'en ligne continue" },
+  { id:"images", label:"Schémas et images" },
+  { id:"exemples", label:"Beaucoup d'exemples concrets" },
+];
+
+/* ---------- Firebase ---------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyA0s2oYouWK-u5fPu3Ddh35Z5wE0Eflvps",
+  authDomain: "etud-ia.firebaseapp.com",
+  projectId: "etud-ia",
+  storageBucket: "etud-ia.firebasestorage.app",
+  messagingSenderId: "79749521176",
+  appId: "1:79749521176:web:4dea692edd01a01a7a486d"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+/* Collection temporaire "enfants" à la racine, en attendant l'espace famille (email+code) */
+const enfantsRef = db.collection("enfants");
+
+let children = [];
+let settingsMode = false;
+let editingId = null; // null = fermé, "new" = création, sinon id enfant
+let formStyles = [];
+let formColor = COLORS[0];
+let formEmoji = EMOJIS[0];
+
+/* Synchronisation temps réel avec Firestore */
+enfantsRef.onSnapshot(
+  (snapshot) => {
+    children = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    render();
+  },
+  (error) => {
+    console.error("Erreur de connexion Firestore :", error);
+    document.getElementById("childrenArea").innerHTML =
+      '<p style="color:#B5674A; font-size:14px;">Impossible de se connecter à la base de données. Vérifie ta connexion internet.</p>';
+  }
+);
+
+/* ---------- Rendu écran liste ---------- */
+function render(){
+  const area = document.getElementById("childrenArea");
+  document.getElementById("subtitleText").textContent = settingsMode
+    ? "Modifie un profil ou ajoutes-en un nouveau"
+    : "Pour qui on révise aujourd'hui ?";
+
+  if(children.length === 0 && !settingsMode){
+    area.innerHTML = `
+      <div class="empty-state">
+        <div class="emoji">🗂️</div>
+        <h2 class="display">Pas encore de profil</h2>
+        <p>Crée le premier profil pour commencer à réviser</p>
+        <button class="btn-primary display" onclick="openEditor('new')">+ Créer un profil</button>
+      </div>`;
+    return;
+  }
+
+  let html = '<div class="grid">';
+  children.forEach(c => {
+    html += `
+      <button class="child-card" style="background:${c.color}" onclick="${settingsMode ? `openEditor('${c.id}')` : `openChild('${c.id}')`}">
+        ${settingsMode ? `<span class="child-gear" onclick="event.stopPropagation(); openEditor('${c.id}')">⚙️</span>` : ""}
+        <div class="child-emoji">${c.emoji}</div>
+        <span class="child-name display">${escapeHtml(c.name || "Sans nom")}</span>
+        ${settingsMode ? `<span class="child-meta">${c.classe || "—"} ${c.age ? "· " + c.age + " ans" : ""}</span>` : ""}
+      </button>`;
+  });
+  html += `
+      <button class="add-card" onclick="openEditor('new')">
+        <span class="plus">+</span>
+        <span class="label">Ajouter</span>
+      </button>
+    </div>`;
+  area.innerHTML = html;
+}
+
+function toggleSettings(){
+  settingsMode = !settingsMode;
+  document.getElementById("settingsToggle").classList.toggle("active", settingsMode);
+  render();
+}
+
+function escapeHtml(str){
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/* ---------- Navigation vers l'espace enfant : matières ---------- */
+let currentChildId = null;
+let subjects = [];
+let subjectsUnsubscribe = null;
+let settingsModeSubjects = false;
+let editingSubjectId = null; // null | "new" | subject id
+let subjectFormColor = COLORS[0];
+let subjectFormEmoji = SUBJECT_EMOJIS[0];
+
+function openChild(id){
+  const c = children.find(x => x.id === id);
+  if(!c) return;
+  currentChildId = id;
+
+  document.getElementById("screen-children").style.display = "none";
+  document.getElementById("screen-space").style.display = "block";
+  document.getElementById("spaceEmoji").textContent = c.emoji;
+  document.getElementById("spaceName").textContent = c.name;
+
+  subjects = [];
+  renderSubjects();
+
+  if(subjectsUnsubscribe) subjectsUnsubscribe();
+  subjectsUnsubscribe = enfantsRef.doc(id).collection("matieres").onSnapshot(
+    (snapshot) => {
+      subjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      renderSubjects();
+    },
+    (error) => {
+      console.error("Erreur de connexion Firestore (matières) :", error);
+      document.getElementById("subjectsArea").innerHTML =
+        '<p style="color:#B5674A; font-size:14px;">Impossible de charger les matières.</p>';
+    }
+  );
+}
+
+function goHome(){
+  if(subjectsUnsubscribe){ subjectsUnsubscribe(); subjectsUnsubscribe = null; }
+  currentChildId = null;
+  document.getElementById("screen-space").style.display = "none";
+  document.getElementById("screen-children").style.display = "block";
+}
+
+/* ---------- Rendu écran matières ---------- */
+function renderSubjects(){
+  const area = document.getElementById("subjectsArea");
+
+  if(subjects.length === 0){
+    document.getElementById("spaceSubtitle").style.display = "none";
+    area.innerHTML = `
+      <div class="empty-state">
+        <div class="emoji">🗂️</div>
+        <h2 class="display">Pas encore de matière</h2>
+        <p>Crée une première carte pour ${escapeHtml(children.find(c=>c.id===currentChildId)?.name || "")}</p>
+        <button class="btn-primary display" onclick="openSubjectEditor('new')">+ Créer une carte</button>
+      </div>`;
+    return;
+  }
+
+  document.getElementById("spaceSubtitle").style.display = "block";
+  let html = '<div class="grid">';
+  subjects.forEach(s => {
+    html += `
+      <div class="child-card" style="background:${s.color}; text-align:left; display:flex; flex-direction:column; align-items:flex-start; gap:12px;">
+        <button class="child-gear" onclick="openSubjectEditor('${s.id}')">⚙️</button>
+        <button onclick="openSubject('${s.id}')" style="all:unset; cursor:pointer; display:flex; flex-direction:column; gap:10px; width:100%;">
+          <div style="width:42px; height:42px; border-radius:14px; background:rgba(255,255,255,0.7); display:flex; align-items:center; justify-content:center; font-size:20px;">${s.icon}</div>
+          <span class="display" style="font-weight:700; color:#4A4638;">${escapeHtml(s.name || "Sans nom")}</span>
+        </button>
+      </div>`;
+  });
+  html += `
+      <button class="add-card" onclick="openSubjectEditor('new')">
+        <span class="plus">+</span>
+        <span class="label">Ajouter</span>
+      </button>
+    </div>`;
+  area.innerHTML = html;
+}
+
+let currentSubjectId = null;
+let chapters = [];
+let chaptersUnsubscribe = null;
+let editingChapterId = null; // null | "new" | chapter id
+let currentChapterId = null;
+let currentTab = "lecon";
+let importState = null; // null | "ready" | "analyzing" | "done"
+
+function chaptersRefFor(childId, subjectId){
+  return enfantsRef.doc(childId).collection("matieres").doc(subjectId).collection("chapitres");
+}
+
+function openSubject(id){
+  const s = subjects.find(x => x.id === id);
+  if(!s) return;
+  currentSubjectId = id;
+
+  document.getElementById("screen-space").style.display = "none";
+  document.getElementById("screen-chapters").style.display = "block";
+  document.getElementById("chaptersSubjectName").textContent = s.name;
+  document.getElementById("chaptersIcon").textContent = s.icon;
+  document.getElementById("chaptersIcon").style.background = s.color;
+
+  chapters = [];
+  renderChapters();
+
+  if(chaptersUnsubscribe) chaptersUnsubscribe();
+  chaptersUnsubscribe = chaptersRefFor(currentChildId, id).onSnapshot(
+    (snapshot) => {
+      chapters = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      renderChapters();
+    },
+    (error) => {
+      console.error("Erreur de connexion Firestore (chapitres) :", error);
+      document.getElementById("chaptersArea").innerHTML =
+        '<p style="color:#B5674A; font-size:14px;">Impossible de charger les chapitres.</p>';
+    }
+  );
+}
+
+function goSubjects(){
+  if(chaptersUnsubscribe){ chaptersUnsubscribe(); chaptersUnsubscribe = null; }
+  currentSubjectId = null;
+  document.getElementById("screen-chapters").style.display = "none";
+  document.getElementById("screen-space").style.display = "block";
+}
+
+const STATUS_LABELS = {
+  en_cours: { label: "En cours", color:"#B08328", bg:"#FCF1DA" },
+  termine: { label: "Terminé", color:"#4C8B57", bg:"#E3F2E5" },
+};
+
+function renderChapters(){
+  const area = document.getElementById("chaptersArea");
+  if(chapters.length === 0){
+    area.innerHTML = `
+      <div class="empty-state">
+        <div class="emoji">📚</div>
+        <h2 class="display">Pas encore de chapitre</h2>
+        <p>Clique sur "Nouveau chapitre" pour commencer</p>
+      </div>`;
+    return;
+  }
+  area.innerHTML = chapters.map(ch => {
+    const st = STATUS_LABELS[ch.status] || STATUS_LABELS.en_cours;
+    return `
+      <div class="chapter-row">
+        <button class="chapter-info" onclick="openChapter('${ch.id}')">
+          <div>
+            <span class="chapter-name">${escapeHtml(ch.title)}</span>
+            <span class="status-badge" style="color:${st.color}; background:${st.bg};">${st.label}</span>
+          </div>
+        </button>
+        <button class="chapter-gear" onclick="openChapterEditor('${ch.id}')">⚙️</button>
+      </div>`;
+  }).join("");
+}
+
+/* ---------- Editeur chapitre (creation directe avec renommage) ---------- */
+function openChapterEditor(id){
+  editingChapterId = id;
+  const isNew = id === "new";
+  const ch = isNew ? null : chapters.find(x => x.id === id);
+
+  document.getElementById("chapterEditorTitle").textContent = isNew ? "Nouveau chapitre" : "Modifier le chapitre";
+  document.getElementById("ch-name").value = ch ? ch.title : "";
+  document.getElementById("chapterSaveBtn").textContent = isNew ? "Créer le chapitre" : "Enregistrer";
+  document.getElementById("chapterDeleteBtn").style.display = isNew ? "none" : "flex";
+  document.getElementById("chapterOverlay").style.display = "flex";
+}
+function closeChapterEditor(){
+  document.getElementById("chapterOverlay").style.display = "none";
+  editingChapterId = null;
+}
+
+function saveChapter(){
+  const title = document.getElementById("ch-name").value.trim();
+  if(!title){ alert("Donne un nom au chapitre avant de continuer 🙂"); return; }
+
+  const ref = chaptersRefFor(currentChildId, currentSubjectId);
+  const saveBtn = document.getElementById("chapterSaveBtn");
+  saveBtn.textContent = "Enregistrement...";
+  saveBtn.disabled = true;
+
+  const isNew = editingChapterId === "new";
+  const request = isNew
+    ? ref.add({ title, status: "en_cours", createdAt: firebase.firestore.FieldValue.serverTimestamp() })
+    : ref.doc(editingChapterId).update({ title });
+
+  request
+    .then((docRef) => {
+      closeChapterEditor();
+      if(isNew){
+        // On entre directement dans le chapitre, prêt à scanner
+        openChapter(docRef.id, true);
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      alert("Oups, l'enregistrement a échoué. Vérifie ta connexion et réessaie.");
+    })
+    .finally(() => {
+      saveBtn.disabled = false;
+    });
+}
+
+function deleteChapter(){
+  if(!confirm("Supprimer ce chapitre ? Son contenu sera perdu.")) return;
+  chaptersRefFor(currentChildId, currentSubjectId).doc(editingChapterId).delete()
+    .then(() => closeChapterEditor())
+    .catch((err) => {
+      console.error(err);
+      alert("Oups, la suppression a échoué.");
+    });
+}
+
+/* ---------- Ecran contenu d'un chapitre ---------- */
+function openChapter(id, justCreated){
+  currentChapterId = id;
+  currentTab = "lecon";
+  importState = justCreated ? "ready" : null;
+
+  document.getElementById("screen-chapters").style.display = "none";
+  document.getElementById("screen-chapter").style.display = "block";
+  const ch = chapters.find(c => c.id === id);
+  document.getElementById("chapterTitle").textContent = ch ? ch.title : "";
+
+  renderImportBlock();
+  renderTabs();
+  renderTabContent();
+}
+
+function goChapters(){
+  currentChapterId = null;
+  document.getElementById("screen-chapter").style.display = "none";
+  document.getElementById("screen-chapters").style.display = "block";
+}
+
+function renderImportBlock(){
+  const box = document.getElementById("importBlock");
+  const s = subjects.find(x => x.id === currentSubjectId);
+  const accent = s ? s.color : "#EAE1F5";
+
+  if(importState === "done"){
+    box.innerHTML = `<span style="font-weight:800; color:#4C8B57; font-size:14px;">✅ Document analysé, contenu généré</span>`;
+    return;
+  }
+  box.innerHTML = `
+    <div style="display:flex; gap:8px; justify-content:center; width:100%;">
+      <button class="import-btn" onclick="setImportState('ready')">📷 Prendre en photo</button>
+      <button class="import-btn" onclick="setImportState('ready')">📁 Importer un fichier</button>
+    </div>
+    ${importState === "ready" ? `<div style="display:flex; justify-content:center; width:100%;"><button class="import-btn analyse-btn" style="background:#A78BFA;" onclick="analyseDocument()">✨ Analyser</button></div>` : ""}
+    ${importState === "analyzing" ? `<div style="display:flex; justify-content:center; width:100%;"><span style="font-weight:700; color:#9C9484; font-size:13px;">Analyse en cours...</span></div>` : ""}
+  `;
+}
+function setImportState(s){ importState = s; renderImportBlock(); }
+function analyseDocument(){
+  importState = "analyzing";
+  renderImportBlock();
+  setTimeout(() => {
+    importState = "done";
+    renderImportBlock();
+    // Simulation : passe le chapitre en "en cours" avec du contenu (le vrai contenu IA viendra plus tard)
+  }, 1200);
+}
+
+function renderTabs(){
+  const tabs = [
+    { id:"lecon", label:"Leçon", icon:"📝" },
+    { id:"exercices", label:"Exercices", icon:"✅" },
+    { id:"qcm", label:"QCM", icon:"🔘" },
+    { id:"question", label:"Une question ?", icon:"❓" },
+  ];
+  document.getElementById("chapterTabs").innerHTML = tabs.map(t => `
+    <button class="tab-btn ${currentTab === t.id ? "active" : ""}" onclick="switchTab('${t.id}')">${t.icon} ${t.label}</button>
+  `).join("");
+}
+function switchTab(id){ currentTab = id; renderTabs(); renderTabContent(); }
+
+function renderTabContent(){
+  const box = document.getElementById("chapterContent");
+  if(currentTab === "lecon"){
+    box.innerHTML = `<p>Le résumé du chapitre s'affichera ici, généré à partir des photos ajoutées — reformulé simplement, adapté à l'âge de l'enfant.</p>`;
+  } else if(currentTab === "exercices"){
+    box.innerHTML = `<p>Les exercices générés à partir de la leçon s'afficheront ici, un par un.</p>`;
+  } else if(currentTab === "qcm"){
+    box.innerHTML = `<p>Un petit QCM pour vérifier ce qui est bien acquis.</p>`;
+  } else if(currentTab === "question"){
+    box.innerHTML = `
+      <p style="margin-bottom:12px;">Tu n'as pas compris un truc ? Pose ta question, on t'explique autrement 🌟</p>
+      <div style="background:#FBF8F3; border-radius:14px; padding:12px 14px; color:#B0A996;">Écris ta question ici...</div>
+    `;
+  }
+}
+
+/* ---------- Editeur matière ---------- */
+function openSubjectEditor(id){
+  editingSubjectId = id;
+  const isNew = id === "new";
+  const s = isNew ? null : subjects.find(x => x.id === id);
+
+  document.getElementById("subjectEditorTitle").textContent = isNew ? "Nouvelle carte" : "Modifier la carte";
+  document.getElementById("s-name").value = s ? s.name : "";
+  subjectFormColor = s ? s.color : COLORS[0];
+  subjectFormEmoji = s ? s.icon : SUBJECT_EMOJIS[0];
+
+  renderSubjectPreview();
+  renderSubjectSwatches();
+  renderSubjectEmojiGrid();
+
+  document.getElementById("subjectDeleteBtn").style.display = isNew ? "none" : "flex";
+  document.getElementById("subjectOverlay").style.display = "flex";
+}
+function closeSubjectEditor(){
+  document.getElementById("subjectOverlay").style.display = "none";
+  editingSubjectId = null;
+}
+function renderSubjectPreview(){
+  const box = document.getElementById("subjectPreview");
+  box.style.background = subjectFormColor;
+  box.textContent = subjectFormEmoji;
+}
+function renderSubjectSwatches(){
+  const box = document.getElementById("subjectSwatches");
+  box.innerHTML = COLORS.map(col => `
+    <button type="button" class="swatch ${subjectFormColor === col ? "active" : ""}" style="background:${col}" onclick="pickSubjectColor('${col}')"></button>
+  `).join("");
+}
+function pickSubjectColor(c){ subjectFormColor = c; renderSubjectSwatches(); renderSubjectPreview(); }
+
+function renderSubjectEmojiGrid(){
+  const box = document.getElementById("subjectEmojiGrid");
+  box.innerHTML = SUBJECT_EMOJIS.map(e => `
+    <button type="button" class="emoji-opt ${subjectFormEmoji === e ? "active" : ""}" onclick="pickSubjectEmoji('${e}')">${e}</button>
+  `).join("");
+}
+function pickSubjectEmoji(e){ subjectFormEmoji = e; renderSubjectEmojiGrid(); renderSubjectPreview(); }
+
+function saveSubject(){
+  const name = document.getElementById("s-name").value.trim();
+  if(!name){ alert("Donne un nom à la carte avant d'enregistrer 🙂"); return; }
+
+  const data = { name, color: subjectFormColor, icon: subjectFormEmoji };
+  const subjectsRef = enfantsRef.doc(currentChildId).collection("matieres");
+
+  const saveBtn = document.querySelector("#subjectOverlay .btn-save");
+  saveBtn.textContent = "Enregistrement...";
+  saveBtn.disabled = true;
+
+  const request = editingSubjectId === "new"
+    ? subjectsRef.add(data)
+    : subjectsRef.doc(editingSubjectId).update(data);
+
+  request
+    .then(() => { closeSubjectEditor(); })
+    .catch((err) => {
+      console.error(err);
+      alert("Oups, l'enregistrement a échoué. Vérifie ta connexion et réessaie.");
+    })
+    .finally(() => {
+      saveBtn.textContent = "Enregistrer";
+      saveBtn.disabled = false;
+    });
+}
+
+function deleteSubject(){
+  if(!confirm("Supprimer cette carte matière ? Les chapitres qu'elle contient seront perdus.")) return;
+  enfantsRef.doc(currentChildId).collection("matieres").doc(editingSubjectId).delete()
+    .then(() => closeSubjectEditor())
+    .catch((err) => {
+      console.error(err);
+      alert("Oups, la suppression a échoué.");
+    });
+}
+
+/* ---------- Editeur profil ---------- */
+function openEditor(id){
+  editingId = id;
+  const isNew = id === "new";
+  const c = isNew ? null : children.find(x => x.id === id);
+
+  document.getElementById("editorTitle").textContent = isNew ? "Nouveau profil" : "Modifier le profil";
+  document.getElementById("f-name").value = c ? c.name : "";
+  document.getElementById("f-age").value = c ? c.age : "";
+  document.getElementById("f-classe").value = c ? (c.classe || "") : "";
+  formStyles = c ? [...(c.styles || [])] : [];
+  formColor = c ? c.color : COLORS[0];
+  formEmoji = c ? c.emoji : EMOJIS[0];
+
+  renderStyleTags();
+  renderSwatches();
+  renderEmojiGrid();
+
+  document.getElementById("resetBtn").style.display = isNew ? "none" : "flex";
+  document.getElementById("editorOverlay").style.display = "flex";
+}
+function closeEditor(){
+  document.getElementById("editorOverlay").style.display = "none";
+  editingId = null;
+}
+
+function renderStyleTags(){
+  const box = document.getElementById("styleTags");
+  box.innerHTML = LEARNING_STYLES.map(s => `
+    <button type="button" class="tag ${formStyles.includes(s.id) ? "active" : ""}" onclick="toggleStyle('${s.id}')">${s.label}</button>
+  `).join("");
+}
+function toggleStyle(id){
+  formStyles = formStyles.includes(id) ? formStyles.filter(s => s !== id) : [...formStyles, id];
+  renderStyleTags();
+}
+
+function renderSwatches(){
+  const box = document.getElementById("swatches");
+  box.innerHTML = COLORS.map(col => `
+    <button type="button" class="swatch ${formColor === col ? "active" : ""}" style="background:${col}" onclick="pickColor('${col}')"></button>
+  `).join("");
+}
+function pickColor(c){ formColor = c; renderSwatches(); }
+
+function renderEmojiGrid(){
+  const box = document.getElementById("emojiGrid");
+  box.innerHTML = EMOJIS.map(e => `
+    <button type="button" class="emoji-opt ${formEmoji === e ? "active" : ""}" onclick="pickEmoji('${e}')">${e}</button>
+  `).join("");
+}
+function pickEmoji(e){ formEmoji = e; renderEmojiGrid(); }
+
+function saveChild(){
+  const name = document.getElementById("f-name").value.trim();
+  if(!name){ alert("Donne un prénom au profil avant d'enregistrer 🙂"); return; }
+
+  const data = {
+    name,
+    age: document.getElementById("f-age").value,
+    classe: document.getElementById("f-classe").value,
+    styles: formStyles,
+    color: formColor,
+    emoji: formEmoji,
+  };
+
+  const saveBtn = document.querySelector(".btn-save");
+  saveBtn.textContent = "Enregistrement...";
+  saveBtn.disabled = true;
+
+  const request = editingId === "new"
+    ? enfantsRef.add(data)
+    : enfantsRef.doc(editingId).update(data);
+
+  request
+    .then(() => { closeEditor(); })
+    .catch((err) => {
+      console.error(err);
+      alert("Oups, l'enregistrement a échoué. Vérifie ta connexion et réessaie.");
+    })
+    .finally(() => {
+      saveBtn.textContent = "Enregistrer";
+      saveBtn.disabled = false;
+    });
+}
+
+function resetChildData(){
+  if(!confirm("Réinitialiser ce profil pour la nouvelle année ? Le contenu scolaire (matières, chapitres) sera effacé, mais le profil (nom, âge, style d'apprentissage) est conservé.")) return;
+  // Le contenu (matières/chapitres) sera géré à l'étape suivante du développement.
+  // Ici on efface uniquement les futures données liées à cet enfant si elles existent.
+  localStorage.removeItem("etudia_subjects_" + editingId);
+  closeEditor();
+  alert("C'est fait — le contenu scolaire de ce profil a été réinitialisé.");
+}
+
+render();
+</script>
+
+</body>
+</html>
