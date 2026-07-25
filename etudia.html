@@ -666,10 +666,13 @@ function deleteChapter(){
 }
 
 /* ---------- Ecran contenu d'un chapitre ---------- */
+let pendingImage = null; // { base64, mediaType, previewUrl }
+
 function openChapter(id, justCreated){
   currentChapterId = id;
   currentTab = "lecon";
-  importState = justCreated ? "ready" : null;
+  importState = null;
+  pendingImage = null;
 
   document.getElementById("screen-chapters").style.display = "none";
   document.getElementById("screen-chapter").style.display = "block";
@@ -689,31 +692,91 @@ function goChapters(){
 
 function renderImportBlock(){
   const box = document.getElementById("importBlock");
-  const s = subjects.find(x => x.id === currentSubjectId);
-  const accent = s ? s.color : "#EAE1F5";
 
-  if(importState === "done"){
-    box.innerHTML = `<span style="font-weight:800; color:#4C8B57; font-size:14px;">✅ Document analysé, contenu généré</span>`;
+  if(importState === "analyzing"){
+    box.innerHTML = `<span style="font-weight:700; color:#9C9484; font-size:13px;">✨ Analyse en cours...</span>`;
     return;
   }
+
   box.innerHTML = `
     <div style="display:flex; gap:8px; justify-content:center; width:100%;">
-      <button class="import-btn" onclick="setImportState('ready')">📷 Prendre en photo</button>
-      <button class="import-btn" onclick="setImportState('ready')">📁 Importer un fichier</button>
+      <label class="import-btn" style="cursor:pointer;">
+        📷 Prendre en photo
+        <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleFileSelected(event)" />
+      </label>
+      <label class="import-btn" style="cursor:pointer;">
+        📁 Importer un fichier
+        <input type="file" accept="image/*" style="display:none;" onchange="handleFileSelected(event)" />
+      </label>
     </div>
-    ${importState === "ready" ? `<div style="display:flex; justify-content:center; width:100%;"><button class="import-btn analyse-btn" style="background:#A78BFA;" onclick="analyseDocument()">✨ Analyser</button></div>` : ""}
-    ${importState === "analyzing" ? `<div style="display:flex; justify-content:center; width:100%;"><span style="font-weight:700; color:#9C9484; font-size:13px;">Analyse en cours...</span></div>` : ""}
+    ${pendingImage ? `
+      <img src="${pendingImage.previewUrl}" style="max-width:140px; border-radius:14px; box-shadow:0 4px 10px -4px rgba(0,0,0,0.2);" />
+      <div style="display:flex; justify-content:center; width:100%;">
+        <button class="import-btn analyse-btn" style="background:#A78BFA;" onclick="analyseDocument()">✨ Analyser</button>
+      </div>
+    ` : ""}
   `;
 }
-function setImportState(s){ importState = s; renderImportBlock(); }
+
+function handleFileSelected(event){
+  const file = event.target.files[0];
+  if(!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUrl = reader.result; // "data:image/jpeg;base64,...."
+    const base64 = dataUrl.split(",")[1];
+    pendingImage = { base64, mediaType: file.type || "image/jpeg", previewUrl: dataUrl };
+    renderImportBlock();
+  };
+  reader.readAsDataURL(file);
+}
+
 function analyseDocument(){
+  if(!pendingImage) return;
   importState = "analyzing";
   renderImportBlock();
-  setTimeout(() => {
-    importState = "done";
-    renderImportBlock();
-    // Simulation : passe le chapitre en "en cours" avec du contenu (le vrai contenu IA viendra plus tard)
-  }, 1200);
+
+  const child = children.find(c => c.id === currentChildId);
+  const subject = subjects.find(s => s.id === currentSubjectId);
+  const chapter = chapters.find(c => c.id === currentChapterId);
+
+  fetch("/.netlify/functions/analyser", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      imageBase64: pendingImage.base64,
+      mediaType: pendingImage.mediaType,
+      childAge: child ? child.age : "",
+      childStyles: child ? child.styles : [],
+      subjectName: subject ? subject.name : "",
+      chapterTitle: chapter ? chapter.title : "",
+      existingSummary: chapter ? (chapter.resume || "") : "",
+    }),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      if(data.error){ throw new Error(data.error); }
+
+      return chaptersRefFor(currentChildId, currentSubjectId).doc(currentChapterId).update({
+        resume: data.summary,
+        status: "en_cours",
+      });
+    })
+    .then(() => {
+      pendingImage = null;
+      importState = null;
+      renderImportBlock();
+      currentTab = "lecon";
+      renderTabs();
+      renderTabContent();
+    })
+    .catch((err) => {
+      console.error(err);
+      alert("Oups, l'analyse a échoué : " + err.message);
+      importState = null;
+      renderImportBlock();
+    });
 }
 
 function renderTabs(){
@@ -731,8 +794,14 @@ function switchTab(id){ currentTab = id; renderTabs(); renderTabContent(); }
 
 function renderTabContent(){
   const box = document.getElementById("chapterContent");
+  const ch = chapters.find(c => c.id === currentChapterId);
+
   if(currentTab === "lecon"){
-    box.innerHTML = `<p>Le résumé du chapitre s'affichera ici, généré à partir des photos ajoutées — reformulé simplement, adapté à l'âge de l'enfant.</p>`;
+    if(ch && ch.resume){
+      box.innerHTML = `<div style="white-space:pre-wrap; line-height:1.6;">${escapeHtml(ch.resume)}</div>`;
+    } else {
+      box.innerHTML = `<p>Le résumé du chapitre s'affichera ici, généré à partir des photos ajoutées — reformulé simplement, adapté à l'âge de l'enfant.</p>`;
+    }
   } else if(currentTab === "exercices"){
     box.innerHTML = `<p>Les exercices générés à partir de la leçon s'afficheront ici, un par un.</p>`;
   } else if(currentTab === "qcm"){
