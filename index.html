@@ -4,6 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
 <title>ÉtudIA</title>
+<link rel="manifest" href="/manifest.json" />
+<link rel="icon" href="/icons/icon-192.png" />
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="ÉtudIA" />
+<meta name="theme-color" content="#A78BFA" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -217,10 +224,26 @@
     <input type="password" id="login-code" placeholder="Code" autocomplete="current-password" />
     <p id="login-error" class="login-error"></p>
     <button class="btn-block btn-save" id="login-btn" onclick="handleLogin()">Continuer</button>
+    <button class="import-btn" style="width:100%; justify-content:center; margin-top:10px; font-size:13px;" onclick="openSavePopup()">💾 Sauvegarder mon compte</button>
     <p class="login-help">
       Première connexion ? Enregistre ton adresse email et choisis ton code — ils resteront
       mémorisés sur ce téléphone. Tu n'en auras besoin à nouveau qu'en cas de changement d'appareil.
     </p>
+  </div>
+</div>
+
+<!-- POPUP SAUVEGARDE COMPTE -->
+<div class="overlay" id="savePopupOverlay" style="display:none;">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 class="display">On va ouvrir ta boîte mail 📩</h3>
+      <button class="close-btn" onclick="closeSavePopup()">✕</button>
+    </div>
+    <p style="font-size:14px; color:#6B6558; line-height:1.6; margin-bottom:18px;">
+      Il ne te restera plus qu'à appuyer sur "Envoyer" — ça te permettra de retrouver ton email et ton code si tu changes de téléphone un jour.
+    </p>
+    <button class="btn-block btn-save" onclick="confirmSavePopup()">C'est parti</button>
+    <button class="import-btn" style="width:100%; justify-content:center; margin-top:8px;" onclick="closeSavePopup()">Annuler</button>
   </div>
 </div>
 
@@ -233,16 +256,29 @@
         <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBAUEBAYFBQUGBgYHCQ4JCQgICRINDQoOFRIWFhUSFBQXGiEcFxgfGRQUHScdHyIjJSUlFhwpLCgkKyEkJST/2wBDAQYGBgkICREJCREkGBQYJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCT/wAARCADcANwDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD6oooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKMUAFFFFABRSE4qC4ukgXLck9AOpoGlfYn3ADmoHvYUyN24+1Zk1xJcH5mwvZRTM4pXN40O5oNqI/hT8zSDUT/dWqNGcUrl+yiXjqR/urQdTP91f1qgaTNA1SiXjqbD+Bf1pP7Vf+4n61QozQP2UexfGqP8A3E/WnDU3/uL+tZ9KDQDpR7GgNRb+6tKNQb+6KoinCi5Hs4l3+0D/AHRR9vPdRVOii4eziXPt5/uil+3H+6KpZpc0XF7OJdF97CnLeKeoqhS5ouL2aNNZ0b+L86krJDEd6niuWTvkelNMh0+xfopkciyLkH8KfTMgooooAKQnFKajlbbQBHcziJCT+FZLyNIxZjzUt1N5r4B4FQUmddGFldi5wKOtJmkyKk2HUuaTNGaBATTTTVlSXOx1bBwcHODSk0xiE0tNzQKY7DgaetR5qreagLR0i/iYZ+gpGdWpGnFylsaQpawZdYkU5jbGOzcitTTb9dRtRMq7SCVZfRh1pHJRxlOrLlW5apaSloOphRSUUALmlzTRQrKwODnFK6vYQ6jNJS0wJYZjGwINaKMHUMOhrJFW7KX5jGeh5FUmZVI9S7RRRTMBDVO8k2ITVt+lZeovhCKBoq9QKQ07HFNIqT0ENJpKKKBi5oIyCD0NJRQBj29lNpV6xicvbSdj29j/AENa4YMAR0NDIGBBGQaAuBgDAoNJz5tXuLRQKQ0yBc1jeIYLn93eW8TTeWpWSNB823rkeuPStik86OMku6jbycnFIxxFBVqbg+pxcWrxXMhhtleecdYUGXB9x2rsNDtJLLT1Sfb50jGSQDopPb8ABXAeFvC48O+P9c8SPqNrPFqXm7YY1Kum+QNyTwelejWd7b3sZkt5AwU7WHdT71dSKi1yu55+Dy2dF+0qX8izmik69KXFZnoB1oPAooKhwVYZBGCKHtoBDLcxohw4J9qqWl6qyuHOA3enXmnKIy0JfKjOCc5qtZWZuZDuYqijJI6/SvAxNXErEQXLr0OmEYcj1NhHVxlGDD2p1RQW0dvnYDk9STmpa9ym5uPvqzOZ2voFOibZIrehptHY1ZLNgdKKahyoNOqzkI5DxWPqZ4rXk6Vj6l0/Gga3GmkNKelJUHoDCKSnGm4qhiOSFJUZOOB6msyK/wBSbl9OkH0H/wBetbaCKQDFIuMkt1cit3kkiVpYzG5HKk9Kkp4FQXLshjihG6aVtqD+tVGLk7IznNJNsVpPnEaKXkPRF61Zi0q9m5cxwj0PJrR07TY7GPj5pW++56k/4VcyKtuMdEjilWlLyMoaI5HN0fwSq03g+zuZGlmJdm6nkZ/I1us6rwTik81P7wpczZMak4u6bMD/AIQXSP8Angufq3+NS2XhS108yG0byfMxuwCc46dTW15qf3xR5sf94UJsuVepJWcn95nNpE4H7u7Gf9paqTx6hZ/NJAs8Y6tEeR+FbqsG5ByKdT5u6M02tmYNvPHcpvjbI7+oqWl1fT2jzfWY2ypy6DpIO/41FBMtxCsqdGGfpUzgkuaOxtTqc2j3JKZBAsAIUk5OeaeKWsXCLkpNao2u9goooqhBR2P0oo/hNAGrEcoKcaZD90VJirONkUnSsfUun41sS9KxtR6fjQNbiGkpccUlQegN4NRyzLEBnrmnyJvXGWX3BxWXfQTRzIFdnEnC59a4Mwr1aVO9NfM0pxUnZmuB0I5B70u0VBbWqwc+Y7t0OTx+VWa66MpyinNWZnKyegw8UzSU+0a9M55FvEAvsTVHWtUGnx4UgORnNJ8P7ia++1Xczl3kxyfZmH9K9ClRkqbqvY4sRWTaprc6y8u4LC1lurmVIYIUMkkjnCooGST7AV8pfEz9ojXfEt3NZ+F7qXSNJUlVlj+W4uB/eLfwA9gOfU16/wDtJ6pNpvwsvY4XKfbbiC0cg87GbLD8QuPxr5F02wu9Wv7ewsLeS5urhxHFEgyXY104KhGSc5nHXqNaIdLqOp3UpkudTvpnPVpLh2J/EmnrdXI/5ern/v8AN/jXpyfs9a99kVpNY0eO8Zdwtizk/TcB+oBFedatot/oGpz6bqds1vdQHDoTkexBHBB7EV6EJ0pO0LHJzX6kAubn/n5uP+/zf401ri6PS6uR/wBtm/xpDxXQeDvA2seOL17bS44wsQDTTzHEcQPTPck9gOeK0lyxV2FzI0/xFr2iTrPpus6jaSqchorlx+mcGvoD4LftB3Wvajb+GfFpQ3c52WuoKoUSt2SQDgMezDgngivOfEHwN1/StNm1CzvLHVo4FLSx224SKAMnAPDY9M59q8zS5e1kWeBikkZDoy9Qw5B/MVzSp0q8fdKp1Wtmfol2zXNWS+Te39qOFik3KPQGtTw5fPqmgabfS/fubWKZvqyAn9TXI+I9Wn0vxOUhcqs33xjrgD/GvLoUnUcqa3O9zUGpHT5parWF2t7bLMvXJB+oqwDXLKLi+VnbGSkroq394tvAxVxv7YNPtbyK7QNG6kkZK55H4VQ1jS1aDzbWI+aCMqv8QPtVyy0y3slUqgMoGGkPU+tScanW9tZrQt0H7p+lFB6H6UHaacP3BUwNRQ/dFSVZxkUvesjUen4iteXoax9RPy/jQNbidqQ0tNNQd6EPNIQDtJAJU5HtS0hdUXczBQO5OKbSejGPHWnVSttSgu5njhJbaeT2x6/SrijJocWtGSmmro4b4hX4s7uBD1aDI/76NbHwluGn0yQnuM/+PtTfGfgweJ0glhuhbXcAKqzLlHUnOD369xV34caPPoNvNp908TzxKNzRklTlmIxn617Cq03guRP3keVUpzVfma0OS/ajTd8NF/7CVt/7PXzt8NfF1n4H8SDV7uwkvUFvJCqRsFZWbHzDPHQEfQ19RftB6Bc6/wDDDU1tEaWezaO9CKMlhG2Wx/wEsfwr4wR898ingUpUnFmOJV2bF94g1HUdel1x7qZL95zOsoc7oznIAPYDgY9BXRfEXxzbeOL+yvorA2ckNsIZdzhi7ZySMdhzj61xO/Fd98OJ/A1/p19ofiyCO0nuHD2+qEkGPj7u7nZg88jByc11TUKaU7bHK0lqcTvBOK63SfHzaF4B1Lw3Z200V5fXHmNexyBcRkKCuOucKRx2Y11i/CbwRp8gvdR8e2sunqd2xJIlZx6blYn8hmuF8f6x4e1XxAW8M6bHY6dBEIVKoU89gTmTaenYc8nGTUqpTre6tQupaEvw78czeBdc+2GOa4spY2jnto5Aok/unnjIP9a5jUJ47i5urhYhEkzySCMHIQMScD6ZqMuPWptN0+41vUrXTLOJpbm8lWCJFGSWY4/+v+Fa8kYtzKUddD7x8FceDtDx/wBA+3/9FrXnfxJ1D7J4nhz0O7+S16lo9gNK0my09W3C1gjgDeu1Quf0rzzxx4Qu/Fevk2dxbwLbk+Y0uSeQvQDr09RXmZdOEa7lN2Wp2YiMnC0dzY8Ez/atCEo5BmcfyrfrN8PaLF4e0qHT4XaQJlmkbq7Hqfb6VpGuLEyjOrKUdrnfQi400pbi5oqtBdNJPLDJA8TIflJ5Dr6g1YrFqxqLR2P0oo7H6UgNSH7oqSo4fuipKs4yKXoaxtR+7+NbEvSsfUTwaBrcDSGlpCO9Qd6GGmSRpKmyRFdfRhkU80nWmUQWtlBatIYIwnmNubFXF4FT2NktwGaQsFHAwastpigfJIR9eabberMXOEfdRQBzVWOT7BrkVwx2xXKeUx9GHStKSxmTkLuH+zVS4tEuYmhlBwfzB9aqnLleuxFRc8dDeaMSKQwBBGCD0NfOvxP/AGZJ7i8n1XwS8CrKS76ZM2wKx6+U/QD/AGT07GvbbLWnsGW01LIA4juOqsPf0NbiOkyB0ZXU9CpyDW0Jzou8TjlFSVmfC1x8H/iLbTGJ/B2rkr3jjDqfoVJFNHwq+ICf8ybrn4Wxr7s2r6ClCr6Cun+0J9jL6vHufCI+FXj1TkeC9cB9RaGhfhT8QGP/ACJmuD/t2Nfd20eg/KjavoKP7Rn2QfVl3PiPSfgb8RdXnWJPDN1aKTzLessKL+Zz+QNfQ3wi+BVh8PZF1bU5o9R1wqVWVVxFbA9RGDySehY89hivVgo7AVDd3lvZRmS4mSJR/ePX6etZVcXUqLlLjRjHUfcSpbQvK7bUQFia5vSw8izXcgw9zIXx7dqdcTz69IuVaCwQ5weGmP8AQVoRwO4ASM4HAxwBWMvcjy9Wb0ld8z2GE+lJzVxNPJ5dwPYU+SxQRsVLFgO9YWN/aRKFLRQKRYtHY/SijsfpQBqQ/dFSVHF90VJVnGQy9Kx9Q/rWxL0rG1Hp+NA1uOpDSZpQag7kNIpu09QCacRk1C0jwsU3dDXPiK/sUpWLSudBbRiKBUyCQOcetTYrmhdyDo1SpqU6fxn86wjmcOqOeWGlvc6CmSRJKMOoNZUetOPvoG/SrkOqW8vBbYfeuiGMpT0TMpUZx1sRXOmblIAEiHqrCsgaSsLlrae4tT3Eb8flXThgwyCCD3FQ3FqswyPlf1rrjOUfhYrqXxoxDHfomE1WYn/aQGjR7y//ALYe0ubppkEW7lQOastG0b7XGCKzryLUI783FgIwXTZvbHy+vFbU587cZW2Jq01FJxNvVNXt9LjDStudvuRr95qyYp9XvCZpLn7IG+7Eqg4Hvmm2OnLA3nTyNcXLcmV+fyq9UynGGkNX3HGk3rMqmC+c/PqtwR3CgLUlto0UknmFWmcf8tJTurQtrLd88mQOw9avABRgAAe1T7WewOMI7Igis44+W+Y+9WAAOlU7nV7O0yHlDMP4U5NZc/iZmyIIQo9XOagwnXiviZ0FBIAyePrXIy6zeS9Z2Uei8VXa4kk+87H6nNBzvGR6I3rl44pmUuoGcjkUgIIyDkGsEEvhc8nitxIvJRUHRRipZ2YXEuq2rbDqXt+FJR2NI7DVi+6KkqOH7gqSrONkMvSsbUen41sy9DWNqPI/Gga3DNJ0oxikYjHJA+tQd5lXet/ZrmSER52HGfwqA60srbmQ59qydZvYI9VuUMgJDDpz2FU1voyeCx/4DU1KUai5Zq6PTp4eDimdH/a6D+E/lSHWB2QVgC9Q/wB78qPtSDvisHgKL+z+ZfsYdToBrK94/wAjUkerwk/NuX6iua+0KT94fnUql3+7j86xnllN/C2hOhDudfbaoU5hm69u1bFnq8c2Fm+RvXsa4GA3EfYEe9XYbq4U8IcfnWao4mhrB8y7HLVwUZHd3MC3CcfeHQ1mbSpIYYIqppmttbbUuB+7PH0+n+Fa12qTRi5iIZSOo7iu2hiI1V2a3R57hKk+WWxUIq5Z22cSOPoD/OobWITNg9B1rF8ReM1tJzp2mA3F0flJjG7afQe/v0FbowxOIjSjeR0Go6xa6aMStukxxGvX8fSuZ1DxLJPnfOsMZ6Kpx+frWQmmXV0PO1O7NuGOTHEdzn6t0z+dTRJbWfFnbop/56SDe5/E0NniVcVUntohhvN43RwzSL/eCED8zUf26c8JZyfiQKsPOznMj5PqxqF7u2T71xCv1kH+NFmzm1fUYbvUW+7axL/vPTRNqhP3bZfzNOGpWI4N7bf9/V/xp41CyPS8tv8Av6v+NHLLsLlfcWObUkIcNa7gcjKn/GtC11vUfOjW5+ysjMFO1SDz+NZxvLc/duIm+jg/1qJruM3Nt86481MnIx1pWZpTqzp/DI7XPNKRwaRHikBMUiOAeqsDj8qXsaD6hO5qw/cFSVHD9wU81ZyMil71jajwPxrZk71j6iMqwoBCZBUGuS8dQa3ItrLpNu90ibhLDGRuycYbB69xXT2z74lP4VIyiqo1fZTU7XsdlSmqkeW9rnkS2njVn40O9Uf7RQf+zVMNK8bv00p1/wB6eMf1r1Q80hFel/a0v5Eciy2PWTPLh4f8bv1sYx9bpP8AGj/hGPGh/wCXW3/8Clr1HFKBR/a1T+Vfj/mH9mU+7PLD4Y8aL/y5QN9LpKj/ALF8Zw8nSJHx/cljb+ter4oIo/tep1ivx/zH/ZsOkmeRvL4nsuZtI1KMDuIWYfmuaW28e3FpJ5czbW/uSjB/I8162MjocfSobuztr+Mx3dvDcof4ZkDj9aazGlLSpSXyF9Sqw/h1GcNbePYLgKJoPlPUx8/oa7vw3qMEtt5lvMJrV+HXvGa5q/8Ahvol0C1kj6bMfutCcx590P8ATFcNDrmseD9Qkhn8y0nX5GDLlJB2IzwR3BpSwGFxnvYf3ZruTPFV6K5a+se569rU1zDGdOspRE8nzXFyf+WMft/tEfl1rmZNZ0Pw/AY7XaxIw0mfmf6t3/DiuR1T4g3+q2xgaYSbxjbGgy3twM1reF/h4dUtFv8AxGbpXkJKWYbZhexc9cn04xVLL4UI8+JenZHny5sRVvHX9Clqfj1DJmNlB6KM/wAqpJrHiHUx/omnX86nvHA+PzxivU9N8P6To4AsNNtLcj+JIxuP/Ajz+taBYnqSfxqVjsPT/h0vvOqOWveTPHf7B8Y3fI0a6UH/AJ6Oifzanf8ACC+LZfvadCv+9cpXsFGKazmovhgvx/zNP7Nh1bPHz8OvFBGfsVn/AOBK1G3w68Ujpp1q30uUr2TFOFP+26/Zfj/mH9mU+7PFz4C8WxcjR1JH924j/wAaU+HPGUQ2nQ7kj/ZkjP8A7NXs9FH9tVXvFfj/AJi/s2HRs8/+H2ga/Y6xJeajavZWwhaMo7DMrEjHAJ4GCcmvQexFJSqMuo9TXnYnEOvPnkrHVRoqlHlTNaIfKKeabH0FPrIxIpB1rJvl61sOKzr1Mg0AYtrMIpzC3AbkfWrprMvoW6jgjkGprG/E48uX5ZR1HrUs66M7qxb702nZpKDoClpBRTAWikNFAhaSlzRQMToaVsOMMAw9DzRRQnbYTSe45AqcqqqfUACnZpgpc0O73JUUth3WikzS5pALmlFJRmkIdRmm5pc0CsOzRmkzSj1oCwU+z/ezF/4V4H171Umn3v5ER+b+Jh/CP8a07KERoAOKaRlVlZWLqDin01RThVHMNIqvPHkVZpjrmgDBvbfrxWHc2xDblyrDkEdq624g3A1lXNnntQNNrVGXbatJD8l0pI/vqP51pQ3EU4zFIrfQ1RmtMdqpvZfNuXKn1U4pWOmGIX2jezzSisAG9j+5ctj/AGhmnfbNSHHmxn/gFBqqsH1N2krE+2al/wA9I/8Avmj7bqP/AD0j/wC+aB+0h3NulrD+3aj/AM9I/wDvij7dqP8Afj/74oD2ke5uUVhfbtR/56R/98Ufb9S/56Rf98UB7SHc3s0Vg/b9S/56Rf8AfFL9v1P/AJ6Rf98UC54dzepQawPt+p/89Iv++KX7fqXeSL/vigOeHc3waWsAX+pf89I/++KX7fqX/PSL/vilYXNHubtLWD9s1Jv+WsY+iUoF9LxJdPj0UYoFzw7mxNdwW4zLIqj0J5qo19NeHZbqY4z/ABt1P0FQ2+mJuDEZb1bk1rW1pt7UWM5Vl9kLCzWIAAfjWtEuBUUUWMcVZUYqjnbuPFLSCloEFNIp1FAETJmq8kAbtVukIBFAGVLZBu1VJNP9BW2VFMZF9KAMI2BHam/2efStsxr6UhjX0oAxfsJ9KPsBPatny19KAi+lAGN/Z/tR9gx2raKL6Unlr6UAY32D2pPsHtW15a+lII19KAMb7B7UosK2RGvpR5a+lAGN9goFhW15a46UeWuelAGOLD2o+we1bPlr6UCNc9KAMhbDHap47IDtWiI19KeqCgCtFahe1WY4gKkVRUgAoARUxTwKBRQAuKKKQ0Af/9k=" alt="ÉtudIA" />
         <h1 class="display">Coucou&nbsp;! 👋</h1>
       </div>
-      <button class="gear-btn" id="settingsToggle" onclick="toggleSettings()" title="Réglages">
+      <button class="gear-btn" id="settingsToggle" onclick="toggleSettings()" title="Réglages profils">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"></circle>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
       </button>
+      <button class="gear-btn" onclick="openAppSettingsModal()" title="Partager / plus de réglages">📤</button>
     </div>
     <p class="subtitle" id="subtitleText">Pour qui on révise aujourd'hui ?</p>
 
     <div id="childrenArea"></div>
+  </div>
+
+  <!-- MODAL REGLAGES GENERAUX -->
+  <div class="overlay" id="appSettingsOverlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 class="display">Réglages</h3>
+        <button class="close-btn" onclick="closeAppSettingsModal()">✕</button>
+      </div>
+      <button class="btn-block btn-save" style="margin-bottom:10px;" onclick="shareAppBySMS()">📤 Partager l'application</button>
+      <button class="import-btn" style="width:100%; justify-content:center;" onclick="openSavePopupFromApp()">💾 Sauvegarder mes identifiants</button>
+    </div>
   </div>
 
   <!-- ESPACE ENFANT : matières -->
@@ -279,7 +315,10 @@
     <div class="topbar">
       <button class="back-link" onclick="goChapters()" style="margin:0;">← Retour</button>
     </div>
-    <h1 class="display" id="chapterTitle" style="font-size:19px; margin:8px 0 16px;"></h1>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin:8px 0 16px;">
+      <h1 class="display" id="chapterTitle" style="font-size:19px; margin:0;"></h1>
+      <button class="import-btn" style="font-size:11px; padding:7px 12px; white-space:nowrap;" onclick="finaliserChapitre()">✅ Fin du chapitre</button>
+    </div>
 
     <div id="importBlock" class="import-block"></div>
 
@@ -527,6 +566,50 @@ function tryAutoLogin(){
       }
     })
     .catch(() => showLogin());
+}
+
+/* ---------- Popup "Sauvegarder mon compte" (envoi par email) ---------- */
+function openSavePopup(){
+  const email = document.getElementById("login-email").value.trim() || localStorage.getItem("etudia_email") || "";
+  const code = document.getElementById("login-code").value.trim() || localStorage.getItem("etudia_code") || "";
+  if(!email || !code){
+    alert("Renseigne d'abord ton email et ton code dans les champs ci-dessus 🙂");
+    return;
+  }
+  document.getElementById("savePopupOverlay").style.display = "flex";
+}
+function closeSavePopup(){
+  document.getElementById("savePopupOverlay").style.display = "none";
+}
+function confirmSavePopup(){
+  const email = document.getElementById("login-email").value.trim() || localStorage.getItem("etudia_email") || "";
+  const code = document.getElementById("login-code").value.trim() || localStorage.getItem("etudia_code") || "";
+  sendCredentialsEmail(email, code);
+  closeSavePopup();
+}
+
+function sendCredentialsEmail(email, code){
+  const subject = encodeURIComponent("Mes identifiants ÉtudIA");
+  const body = encodeURIComponent(`Voici mes identifiants pour retrouver mon espace ÉtudIA :\n\nEmail : ${email}\nCode : ${code}\n\nGarde ce mail précieusement !`);
+  window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+}
+
+/* ---------- Menu Réglages généraux (partage + sauvegarde depuis l'appli) ---------- */
+function openAppSettingsModal(){
+  document.getElementById("appSettingsOverlay").style.display = "flex";
+}
+function closeAppSettingsModal(){
+  document.getElementById("appSettingsOverlay").style.display = "none";
+}
+
+function shareAppBySMS(){
+  const message = "🤖 ÉtudIA — L'IA qui t'aide à comprendre, pas à copier\nJe t'invite à essayer ÉtudIA, l'appli qui aide les enfants à réviser à partir de photos de leurs cours ! 📚\n👉 etud-ia.netlify.app";
+  window.location.href = `sms:?&body=${encodeURIComponent(message)}`;
+}
+
+function openSavePopupFromApp(){
+  closeAppSettingsModal();
+  document.getElementById("savePopupOverlay").style.display = "flex";
 }
 
 /* ---------- Rendu écran liste ---------- */
@@ -795,13 +878,13 @@ function deleteChapter(){
 }
 
 /* ---------- Ecran contenu d'un chapitre ---------- */
-let pendingImage = null; // { base64, mediaType, previewUrl }
+let pendingImages = []; // [{ base64, mediaType, previewUrl }, ...]
 
 function openChapter(id, justCreated){
   currentChapterId = id;
   currentTab = "lecon";
   importState = null;
-  pendingImage = null;
+  pendingImages = [];
 
   document.getElementById("screen-chapters").style.display = "none";
   document.getElementById("screen-chapter").style.display = "block";
@@ -831,15 +914,24 @@ function renderImportBlock(){
     <div style="display:flex; gap:8px; justify-content:center; width:100%;">
       <label class="import-btn" style="cursor:pointer;">
         📷 Prendre en photo
-        <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleFileSelected(event)" />
+        <input type="file" accept="image/*" capture="environment" multiple style="display:none;" onchange="handleFileSelected(event)" />
       </label>
       <label class="import-btn" style="cursor:pointer;">
-        📁 Importer un fichier
-        <input type="file" accept="image/*" style="display:none;" onchange="handleFileSelected(event)" />
+        📁 Importer des fichiers
+        <input type="file" accept="image/*" multiple style="display:none;" onchange="handleFileSelected(event)" />
       </label>
     </div>
-    ${pendingImage ? `
-      <img src="${pendingImage.previewUrl}" style="max-width:140px; border-radius:14px; box-shadow:0 4px 10px -4px rgba(0,0,0,0.2);" />
+    ${pendingImages.length > 0 ? `
+      <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+        ${pendingImages.map((img, i) => `
+          <div style="position:relative;">
+            <img src="${img.previewUrl}" style="width:70px; height:70px; object-fit:cover; border-radius:12px; box-shadow:0 4px 10px -4px rgba(0,0,0,0.2);" />
+            <button onclick="removePendingImage(${i})"
+              style="position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:999px; background:#B5674A; color:#fff; border:none; font-size:11px; cursor:pointer; line-height:1;">✕</button>
+          </div>
+        `).join("")}
+      </div>
+      <p style="font-size:12px; color:#9C9484; margin:0;">${pendingImages.length} photo${pendingImages.length > 1 ? "s" : ""} prête${pendingImages.length > 1 ? "s" : ""}</p>
       <div style="display:flex; justify-content:center; width:100%;">
         <button class="import-btn analyse-btn" style="background:#A78BFA;" onclick="analyseDocument()">✨ Analyser</button>
       </div>
@@ -848,21 +940,30 @@ function renderImportBlock(){
 }
 
 function handleFileSelected(event){
-  const file = event.target.files[0];
-  if(!file) return;
+  const files = Array.from(event.target.files || []);
+  if(files.length === 0) return;
 
-  const reader = new FileReader();
-  reader.onload = () => {
-    const dataUrl = reader.result; // "data:image/jpeg;base64,...."
-    const base64 = dataUrl.split(",")[1];
-    pendingImage = { base64, mediaType: file.type || "image/jpeg", previewUrl: dataUrl };
-    renderImportBlock();
-  };
-  reader.readAsDataURL(file);
+  files.forEach((file) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result; // "data:image/jpeg;base64,...."
+      const base64 = dataUrl.split(",")[1];
+      pendingImages.push({ base64, mediaType: file.type || "image/jpeg", previewUrl: dataUrl });
+      renderImportBlock();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  event.target.value = ""; // permet de re-sélectionner les mêmes fichiers si besoin
+}
+
+function removePendingImage(index){
+  pendingImages.splice(index, 1);
+  renderImportBlock();
 }
 
 function analyseDocument(){
-  if(!pendingImage) return;
+  if(pendingImages.length === 0) return;
   importState = "analyzing";
   renderImportBlock();
 
@@ -874,8 +975,7 @@ function analyseDocument(){
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      imageBase64: pendingImage.base64,
-      mediaType: pendingImage.mediaType,
+      images: pendingImages.map(img => ({ base64: img.base64, mediaType: img.mediaType })),
       childAge: child ? child.age : "",
       childStyles: child ? child.styles : [],
       subjectName: subject ? subject.name : "",
@@ -887,6 +987,15 @@ function analyseDocument(){
     .then((data) => {
       if(data.error){ throw new Error(data.error); }
 
+      if(data.correspond === false){
+        // La photo ne correspond pas à la matière/au chapitre : on ne sauvegarde rien.
+        pendingImages = [];
+        importState = null;
+        renderImportBlock();
+        alert("🤔 " + (data.avertissement || "Cette photo ne semble pas correspondre à ce chapitre. Vérifie que tu as scanné le bon cours."));
+        return null;
+      }
+
       return chaptersRefFor(currentChildId, currentSubjectId).doc(currentChapterId).update({
         resume: data.summary,
         exercices: data.exercices || [],
@@ -894,8 +1003,9 @@ function analyseDocument(){
         status: "en_cours",
       });
     })
-    .then(() => {
-      pendingImage = null;
+    .then((result) => {
+      if(result === null) return; // cas du mismatch déjà géré ci-dessus
+      pendingImages = [];
       importState = null;
       renderImportBlock();
       currentTab = "lecon";
@@ -910,9 +1020,87 @@ function analyseDocument(){
     });
 }
 
-function toggleReponse(i){
-  const el = document.getElementById("reponse-" + i);
-  el.style.display = el.style.display === "none" ? "block" : "none";
+function finaliserChapitre(){
+  const chapter = chapters.find(c => c.id === currentChapterId);
+  if(!chapter || !chapter.resume){
+    alert("Ajoute au moins une photo avant de clore ce chapitre 🙂");
+    return;
+  }
+  if(!confirm("Clore ce chapitre ? L'IA va nettoyer et consolider le résumé en une version finale.")) return;
+
+  const child = children.find(c => c.id === currentChildId);
+  const subject = subjects.find(s => s.id === currentSubjectId);
+
+  importState = "analyzing";
+  renderImportBlock();
+
+  fetch("/.netlify/functions/analyser", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      finalize: true,
+      childAge: child ? child.age : "",
+      childStyles: child ? child.styles : [],
+      subjectName: subject ? subject.name : "",
+      chapterTitle: chapter.title,
+      existingSummary: chapter.resume,
+    }),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      if(data.error){ throw new Error(data.error); }
+      return chaptersRefFor(currentChildId, currentSubjectId).doc(currentChapterId).update({
+        resume: data.summary,
+        exercices: data.exercices || [],
+        qcm: data.qcm || [],
+        status: "termine",
+      });
+    })
+    .then(() => {
+      importState = null;
+      renderImportBlock();
+      currentTab = "lecon";
+      renderTabs();
+      renderTabContent();
+    })
+    .catch((err) => {
+      console.error(err);
+      alert("Oups, la finalisation a échoué : " + err.message);
+      importState = null;
+      renderImportBlock();
+    });
+}
+
+function normaliserTexte(s){
+  return (s || "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // enlève les accents
+    .replace(/[^\w\s]/g, "") // enlève la ponctuation
+    .trim();
+}
+
+function verifierExercice(i, bonneReponse){
+  const input = document.getElementById("reponse-input-" + i);
+  const feedback = document.getElementById("feedback-" + i);
+  const userAnswer = normaliserTexte(input.value);
+  const correct = normaliserTexte(bonneReponse);
+
+  if(userAnswer === ""){
+    feedback.style.color = "#9C9484";
+    feedback.textContent = "Écris une réponse avant de vérifier 🙂";
+    return;
+  }
+
+  // Comparaison souple : correspondance exacte, ou l'une contient l'autre (utile pour réponses courtes/longues)
+  const isCorrect = userAnswer === correct || userAnswer.includes(correct) || correct.includes(userAnswer);
+
+  if(isCorrect){
+    feedback.style.color = "#4C8B57";
+    feedback.textContent = "✅ Bravo, c'est juste !";
+  } else {
+    feedback.style.color = "#B5674A";
+    feedback.textContent = `❌ Pas tout à fait. Réponse attendue : ${bonneReponse}`;
+  }
 }
 
 function answerQcm(qi, chosenIndex, correctIndex){
@@ -931,6 +1119,41 @@ function answerQcm(qi, chosenIndex, correctIndex){
   }
 }
 
+function exportResumePDF(){
+  const ch = chapters.find(c => c.id === currentChapterId);
+  const subject = subjects.find(s => s.id === currentSubjectId);
+  if(!ch || !ch.resume) return;
+
+  const win = window.open("", "_blank");
+  const plainText = ch.resume
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/^### (.*)$/gm, "$1")
+    .replace(/^## (.*)$/gm, "$1")
+    .replace(/^# (.*)$/gm, "$1");
+
+  win.document.write(`
+    <html>
+    <head>
+      <meta charset="UTF-8" />
+      <title>${escapeHtml(ch.title)}</title>
+      <style>
+        body{ font-family: Georgia, serif; padding: 40px; color:#333; max-width:700px; margin:0 auto; }
+        h1{ color:#7A5FA0; font-size:22px; margin-bottom:4px; }
+        .subject{ color:#9C9484; font-size:14px; margin-bottom:24px; }
+        .content{ white-space:pre-wrap; line-height:1.8; font-size:15px; }
+      </style>
+    </head>
+    <body>
+      <h1>${escapeHtml(ch.title)}</h1>
+      <p class="subject">${escapeHtml(subject ? subject.name : "")}</p>
+      <div class="content">${escapeHtml(plainText)}</div>
+      <script>window.onload = () => window.print();</script>
+    </body>
+    </html>
+  `);
+  win.document.close();
+}
+
 function renderTabs(){
   const tabs = [
     { id:"lecon", label:"Leçon", icon:"📝" },
@@ -944,24 +1167,68 @@ function renderTabs(){
 }
 function switchTab(id){ currentTab = id; renderTabs(); renderTabContent(); }
 
+/* ---------- Rendu markdown chaleureux pour les résumés ---------- */
+const SUBJECT_ACCENT_COLORS = ["#7A5FA0", "#B5674A", "#4C8B57", "#3E7CA6", "#B08328"];
+function mdToHtml(text){
+  if(!text) return "";
+  const lines = text.split("\n");
+  let html = "";
+  let inList = false;
+  const closeList = () => { if(inList){ html += "</ul>"; inList = false; } };
+
+  lines.forEach((raw) => {
+    const line = raw.trim();
+    if(line === ""){ closeList(); return; }
+
+    const inlineFormat = (s) => escapeHtml(s)
+      .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#7A5FA0;">$1</strong>');
+
+    if(line.startsWith("### ")){
+      closeList();
+      html += `<h4 style="margin:14px 0 6px; color:#4A4638; font-size:14px;">${inlineFormat(line.slice(4))}</h4>`;
+    } else if(line.startsWith("## ")){
+      closeList();
+      html += `<h3 class="display" style="margin:16px 0 8px; color:#7A5FA0; font-size:16px;">${inlineFormat(line.slice(3))}</h3>`;
+    } else if(line.startsWith("# ")){
+      closeList();
+      html += `<h2 class="display" style="margin:4px 0 10px; color:#4A4638; font-size:18px;">${inlineFormat(line.slice(2))}</h2>`;
+    } else if(line.startsWith("- ") || line.startsWith("* ")){
+      if(!inList){ html += '<ul style="margin:4px 0 10px; padding-left:20px;">'; inList = true; }
+      html += `<li style="margin-bottom:6px; line-height:1.5;">${inlineFormat(line.slice(2))}</li>`;
+    } else {
+      closeList();
+      html += `<p style="margin:6px 0; line-height:1.6;">${inlineFormat(line)}</p>`;
+    }
+  });
+  closeList();
+  return html;
+}
+
 function renderTabContent(){
   const box = document.getElementById("chapterContent");
   const ch = chapters.find(c => c.id === currentChapterId);
 
   if(currentTab === "lecon"){
     if(ch && ch.resume){
-      box.innerHTML = `<div style="white-space:pre-wrap; line-height:1.6;">${escapeHtml(ch.resume)}</div>`;
+      box.innerHTML = `
+        <div>${mdToHtml(ch.resume)}</div>
+        <button class="import-btn" style="margin-top:14px; font-size:12px;" onclick="exportResumePDF()">📄 Télécharger en PDF</button>
+      `;
     } else {
       box.innerHTML = `<p>Le résumé du chapitre s'affichera ici, généré à partir des photos ajoutées — reformulé simplement, adapté à l'âge de l'enfant.</p>`;
     }
   } else if(currentTab === "exercices"){
     if(ch && ch.exercices && ch.exercices.length > 0){
-      box.innerHTML = `<div style="display:flex; flex-direction:column; gap:14px;">` +
+      box.innerHTML = `<div style="display:flex; flex-direction:column; gap:16px;">` +
         ch.exercices.map((ex, i) => `
-          <div style="border-bottom:1px solid #F0EBE2; padding-bottom:12px;">
+          <div style="border-bottom:1px solid #F0EBE2; padding-bottom:14px;">
             <p style="font-weight:700; color:#4A4638; margin:0 0 8px;">${i + 1}. ${escapeHtml(ex.question)}</p>
-            <button class="import-btn" style="font-size:12px; padding:6px 12px;" onclick="toggleReponse(${i})">Voir la réponse</button>
-            <p id="reponse-${i}" style="display:none; margin-top:8px; color:#4C8B57; font-weight:700;">${escapeHtml(ex.reponse)}</p>
+            <div style="display:flex; gap:8px; margin-bottom:6px;">
+              <input type="text" id="reponse-input-${i}" placeholder="Ta réponse..."
+                style="flex:1; border:none; border-radius:12px; padding:9px 12px; background:#FBF8F3; font-size:13px; font-family:'Nunito',sans-serif;" />
+              <button class="import-btn" style="font-size:12px; padding:8px 14px;" onclick="verifierExercice(${i}, ${JSON.stringify(ex.reponse)})">Vérifier</button>
+            </div>
+            <p id="feedback-${i}" style="font-size:13px; font-weight:700; margin:4px 0 0;"></p>
           </div>
         `).join("") + `</div>`;
     } else {
