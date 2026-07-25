@@ -1147,7 +1147,7 @@ function exportResumePDF(){
       <h1>${escapeHtml(ch.title)}</h1>
       <p class="subject">${escapeHtml(subject ? subject.name : "")}</p>
       <div class="content">${escapeHtml(plainText)}</div>
-      <script>window.onload = () => window.print();</script>
+      <script>window.onload = () => window.print();<\/script>
     </body>
     </html>
   `);
