@@ -38,17 +38,19 @@ ${stylesText ? `Adapte ta réponse en utilisant si possible : ${stylesText}.` : 
 Règles impératives :
 - Reste strictement fidèle au contenu de la photo, n'invente aucune information.
 - Utilise un vocabulaire simple et adapté à l'âge de l'enfant.
-- Structure le résumé avec des titres courts et des puces, pas de longs paragraphes.
-- Si un résumé existe déjà pour ce chapitre, complète-le intelligemment avec le nouveau contenu, sans répéter ce qui y est déjà.
-- Génère aussi 3 à 5 petits exercices (question + réponse) et un QCM de 3 à 5 questions (avec 4 choix chacune, un seul bon) qui portent uniquement sur le contenu de cette photo.
+- Le résumé doit rester COURT et concis : uniquement les points essentiels, pas plus de 150 mots, avec des titres brefs et des puces.
+- Si un résumé existe déjà pour ce chapitre, complète-le intelligemment avec le nouveau contenu, sans répéter ce qui y est déjà, en gardant l'ensemble concis.
+- Génère exactement 3 petits exercices (question + réponse courte) et un QCM d'exactement 3 questions (4 choix chacune, un seul bon), qui portent uniquement sur le contenu de cette photo.
+- Reste bref partout : c'est très important que la réponse complète tienne dans la limite de longueur donnée.
 
-Réponds UNIQUEMENT avec un objet JSON valide, sans texte avant ni après, ni balises markdown, au format exact suivant :
+Réponds UNIQUEMENT avec un objet JSON valide et complet, sans texte avant ni après, ni balises markdown, au format exact suivant :
 {
   "resume": "le résumé en markdown (titres avec #, listes avec -)",
   "exercices": [ { "question": "...", "reponse": "..." } ],
   "qcm": [ { "question": "...", "choix": ["...", "...", "...", "..."], "bonneReponse": 0 } ]
 }
-"bonneReponse" est l'index (0 à 3) du bon choix dans le tableau "choix".`;
+"bonneReponse" est l'index (0 à 3) du bon choix dans le tableau "choix".
+Termine toujours le JSON proprement (n'oublie pas les accolades et crochets de fermeture).`;
 
     const userText = existingSummary
       ? `Voici le résumé actuel du chapitre à compléter avec le contenu de cette nouvelle photo :\n\n${existingSummary}`
@@ -63,7 +65,7 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte avant ni après, ni ba
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 2000,
+        max_tokens: 4000,
         system: systemPrompt,
         messages: [
           {
@@ -84,6 +86,10 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte avant ni après, ni ba
       return { statusCode: 502, body: JSON.stringify({ error: "L'IA n'a pas pu répondre. Réessaie dans un instant." }) };
     }
 
+    if (data.stop_reason === "max_tokens") {
+      console.error("Réponse IA tronquée (max_tokens atteint).");
+    }
+
     const rawText = (data.content || [])
       .filter((block) => block.type === "text")
       .map((block) => block.text)
@@ -91,15 +97,26 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte avant ni après, ni ba
       .trim();
 
     // L'IA peut parfois entourer le JSON de ```json ... ``` malgré la consigne : on nettoie au cas où.
-    const cleaned = rawText.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "");
+    let cleaned = rawText.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "");
+
+    // Filet de sécurité supplémentaire : si du texte traîne avant/après les accolades, on isole le JSON.
+    const firstBrace = cleaned.indexOf("{");
+    const lastBrace = cleaned.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+    }
 
     let parsed;
     try {
       parsed = JSON.parse(cleaned);
     } catch (parseErr) {
-      console.error("Réponse IA non-JSON:", rawText);
-      // Filet de sécurité : si le JSON est invalide, on renvoie au moins le texte brut comme résumé.
-      parsed = { resume: rawText, exercices: [], qcm: [] };
+      console.error("Réponse IA non-JSON (probablement tronquée) :", rawText);
+      return {
+        statusCode: 502,
+        body: JSON.stringify({
+          error: "La réponse de l'IA était incomplète ou mal formée. Réessaie — ça arrive rarement deux fois de suite.",
+        }),
+      };
     }
 
     return {
@@ -115,4 +132,3 @@ Réponds UNIQUEMENT avec un objet JSON valide, sans texte avant ni après, ni ba
     return { statusCode: 500, body: JSON.stringify({ error: "Erreur interne du serveur." }) };
   }
 };
-
