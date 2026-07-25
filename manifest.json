@@ -1,1 +1,15 @@
+{
+  "name": "ÉtudIA",
+  "short_name": "ÉtudIA",
+  "description": "L'IA qui t'aide à comprendre, pas à copier.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FEFCF9",
+  "theme_color": "#A78BFA",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
+
 
