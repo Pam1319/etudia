@@ -38,12 +38,21 @@ ${stylesText ? `Adapte ta réponse en utilisant si possible : ${stylesText}.` : 
 Règles impératives :
 - Reste strictement fidèle au contenu de la photo, n'invente aucune information.
 - Utilise un vocabulaire simple et adapté à l'âge de l'enfant.
-- Structure ta réponse avec des titres courts et des puces, pas de longs paragraphes.
-- Si un résumé existe déjà pour ce chapitre, complète-le intelligemment avec le nouveau contenu, sans répéter ce qui y est déjà.`;
+- Structure le résumé avec des titres courts et des puces, pas de longs paragraphes.
+- Si un résumé existe déjà pour ce chapitre, complète-le intelligemment avec le nouveau contenu, sans répéter ce qui y est déjà.
+- Génère aussi 3 à 5 petits exercices (question + réponse) et un QCM de 3 à 5 questions (avec 4 choix chacune, un seul bon) qui portent uniquement sur le contenu de cette photo.
+
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte avant ni après, ni balises markdown, au format exact suivant :
+{
+  "resume": "le résumé en markdown (titres avec #, listes avec -)",
+  "exercices": [ { "question": "...", "reponse": "..." } ],
+  "qcm": [ { "question": "...", "choix": ["...", "...", "...", "..."], "bonneReponse": 0 } ]
+}
+"bonneReponse" est l'index (0 à 3) du bon choix dans le tableau "choix".`;
 
     const userText = existingSummary
       ? `Voici le résumé actuel du chapitre à compléter avec le contenu de cette nouvelle photo :\n\n${existingSummary}`
-      : "Analyse cette photo de cours et génère un premier résumé du chapitre.";
+      : "Analyse cette photo de cours et génère un premier résumé, des exercices et un QCM pour ce chapitre.";
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -54,7 +63,7 @@ Règles impératives :
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 1200,
+        max_tokens: 2000,
         system: systemPrompt,
         messages: [
           {
@@ -75,14 +84,31 @@ Règles impératives :
       return { statusCode: 502, body: JSON.stringify({ error: "L'IA n'a pas pu répondre. Réessaie dans un instant." }) };
     }
 
-    const summary = (data.content || [])
+    const rawText = (data.content || [])
       .filter((block) => block.type === "text")
       .map((block) => block.text)
-      .join("\n");
+      .join("\n")
+      .trim();
+
+    // L'IA peut parfois entourer le JSON de ```json ... ``` malgré la consigne : on nettoie au cas où.
+    const cleaned = rawText.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "");
+
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch (parseErr) {
+      console.error("Réponse IA non-JSON:", rawText);
+      // Filet de sécurité : si le JSON est invalide, on renvoie au moins le texte brut comme résumé.
+      parsed = { resume: rawText, exercices: [], qcm: [] };
+    }
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ summary }),
+      body: JSON.stringify({
+        summary: parsed.resume || "",
+        exercices: Array.isArray(parsed.exercices) ? parsed.exercices : [],
+        qcm: Array.isArray(parsed.qcm) ? parsed.qcm : [],
+      }),
     };
   } catch (err) {
     console.error(err);
