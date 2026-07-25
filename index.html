@@ -760,6 +760,8 @@ function analyseDocument(){
 
       return chaptersRefFor(currentChildId, currentSubjectId).doc(currentChapterId).update({
         resume: data.summary,
+        exercices: data.exercices || [],
+        qcm: data.qcm || [],
         status: "en_cours",
       });
     })
@@ -777,6 +779,27 @@ function analyseDocument(){
       importState = null;
       renderImportBlock();
     });
+}
+
+function toggleReponse(i){
+  const el = document.getElementById("reponse-" + i);
+  el.style.display = el.style.display === "none" ? "block" : "none";
+}
+
+function answerQcm(qi, chosenIndex, correctIndex){
+  const chosenBtn = document.getElementById(`qcm-${qi}-${chosenIndex}`);
+  const correctBtn = document.getElementById(`qcm-${qi}-${correctIndex}`);
+  if(chosenIndex === correctIndex){
+    chosenBtn.style.background = "#E3F2E5";
+    chosenBtn.style.color = "#4C8B57";
+    chosenBtn.style.fontWeight = "700";
+  } else {
+    chosenBtn.style.background = "#F8E7E0";
+    chosenBtn.style.color = "#B5674A";
+    correctBtn.style.background = "#E3F2E5";
+    correctBtn.style.color = "#4C8B57";
+    correctBtn.style.fontWeight = "700";
+  }
 }
 
 function renderTabs(){
@@ -803,9 +826,37 @@ function renderTabContent(){
       box.innerHTML = `<p>Le résumé du chapitre s'affichera ici, généré à partir des photos ajoutées — reformulé simplement, adapté à l'âge de l'enfant.</p>`;
     }
   } else if(currentTab === "exercices"){
-    box.innerHTML = `<p>Les exercices générés à partir de la leçon s'afficheront ici, un par un.</p>`;
+    if(ch && ch.exercices && ch.exercices.length > 0){
+      box.innerHTML = `<div style="display:flex; flex-direction:column; gap:14px;">` +
+        ch.exercices.map((ex, i) => `
+          <div style="border-bottom:1px solid #F0EBE2; padding-bottom:12px;">
+            <p style="font-weight:700; color:#4A4638; margin:0 0 8px;">${i + 1}. ${escapeHtml(ex.question)}</p>
+            <button class="import-btn" style="font-size:12px; padding:6px 12px;" onclick="toggleReponse(${i})">Voir la réponse</button>
+            <p id="reponse-${i}" style="display:none; margin-top:8px; color:#4C8B57; font-weight:700;">${escapeHtml(ex.reponse)}</p>
+          </div>
+        `).join("") + `</div>`;
+    } else {
+      box.innerHTML = `<p>Les exercices générés à partir de la leçon s'afficheront ici, un par un.</p>`;
+    }
   } else if(currentTab === "qcm"){
-    box.innerHTML = `<p>Un petit QCM pour vérifier ce qui est bien acquis.</p>`;
+    if(ch && ch.qcm && ch.qcm.length > 0){
+      box.innerHTML = `<div style="display:flex; flex-direction:column; gap:18px;">` +
+        ch.qcm.map((q, qi) => `
+          <div>
+            <p style="font-weight:700; color:#4A4638; margin:0 0 10px;">${qi + 1}. ${escapeHtml(q.question)}</p>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              ${q.choix.map((c, ci) => `
+                <button id="qcm-${qi}-${ci}" onclick="answerQcm(${qi}, ${ci}, ${q.bonneReponse})"
+                  style="text-align:left; padding:10px 14px; border-radius:12px; border:none; background:#F5F2EC; cursor:pointer; font-family:'Nunito',sans-serif; font-size:14px;">
+                  ${escapeHtml(c)}
+                </button>
+              `).join("")}
+            </div>
+          </div>
+        `).join("") + `</div>`;
+    } else {
+      box.innerHTML = `<p>Un petit QCM pour vérifier ce qui est bien acquis.</p>`;
+    }
   } else if(currentTab === "question"){
     box.innerHTML = `
       <p style="margin-bottom:12px;">Tu n'as pas compris un truc ? Pose ta question, on t'explique autrement 🌟</p>
