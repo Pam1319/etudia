@@ -8,22 +8,24 @@ exports.handler = async function (event) {
 
   try {
     const {
-      images,            // tableau de photos [{ base64, mediaType }, ...] — absent si finalize=true
+      images,            // tableau de photos [{ base64, mediaType }, ...] — absent si finalize/renew
       finalize,          // true = pas de nouvelle photo, on consolide le résumé existant pour clore le chapitre
+      renew,             // true = pas de nouvelle photo, on régénère juste un nouveau jeu d'exercices/QCM
       childAge,          // âge de l'enfant
       childStyles,       // tableau des préférences d'apprentissage (ids)
       subjectName,        // ex: "Orthographe"
       chapterTitle,       // ex: "Les accords du participe passé"
-      existingSummary,    // résumé déjà existant du chapitre (pour l'enrichir ou le finaliser)
+      existingSummary,    // résumé déjà existant du chapitre (pour l'enrichir, le finaliser, ou le renouveler)
     } = JSON.parse(event.body);
 
     const hasImages = Array.isArray(images) && images.length > 0;
+    const textOnly = finalize || renew;
 
-    if (!finalize && !hasImages) {
+    if (!textOnly && !hasImages) {
       return { statusCode: 400, body: JSON.stringify({ error: "Aucune image reçue." }) };
     }
-    if (finalize && !existingSummary) {
-      return { statusCode: 400, body: JSON.stringify({ error: "Aucun résumé à finaliser." }) };
+    if (textOnly && !existingSummary) {
+      return { statusCode: 400, body: JSON.stringify({ error: "Aucun résumé disponible." }) };
     }
 
     const STYLE_LABELS = {
@@ -31,6 +33,9 @@ exports.handler = async function (event) {
       points: "une présentation par points plutôt qu'en texte continu",
       images: "des schémas et des images pour illustrer",
       exemples: "beaucoup d'exemples concrets",
+      acronymes: "des acronymes pour retenir les listes",
+      histoires: "transformer les notions en petite histoire amusante ou absurde",
+      chant: "une version chantée ou en rap pour les listes, conjugaisons ou formules",
     };
     const stylesText = (childStyles || [])
       .map((id) => STYLE_LABELS[id])
@@ -60,13 +65,28 @@ Règles impératives :
 - Réorganise et nettoie ce résumé pour en faire une version finale claire, bien structurée, sans doublons ni répétitions.
 - Reste fidèle au contenu fourni, n'invente aucune information nouvelle.
 - Le résumé final doit rester COURT et concis : pas plus de 200 mots, avec des titres brefs et des puces, des mots-clés en **gras**.
-- Génère 5 exercices (question + réponse courte) et un QCM de 5 questions (4 choix chacune, un seul bon) qui couvrent l'ensemble du chapitre.
+- Génère 10 exercices (question + réponse courte) et un QCM de 10 questions (4 choix chacune, un seul bon) qui couvrent l'ensemble du chapitre.
 - Comme il n'y a pas de nouvelle photo à vérifier, mets toujours "correspond": true.
 - Reste bref partout : c'est très important que la réponse complète tienne dans la limite de longueur donnée.
 
 ${jsonFormatInstructions}`;
       userContent = [
         { type: "text", text: `Voici le résumé à consolider pour clore ce chapitre :\n\n${existingSummary}` },
+      ];
+    } else if (renew) {
+      // Mode "renouveler" : pas de nouvelle photo, le résumé ne change pas, seuls exercices/QCM sont régénérés.
+      systemPrompt = `Tu es un professeur particulier bienveillant qui aide un enfant de ${childAge || "primaire/collège"} ans à réviser.
+Voici le résumé du chapitre "${chapterTitle}" en ${subjectName}.
+${stylesText ? `Adapte ta réponse en utilisant si possible : ${stylesText}.` : ""}
+Règles impératives :
+- Génère un TOUT NOUVEAU jeu de 10 exercices (question + réponse courte) et un QCM de 10 questions (4 choix chacune, un seul bon), différents de ce qui aurait pu être généré avant, mais toujours basés uniquement sur ce résumé.
+- Reste fidèle au contenu du résumé, n'invente aucune information nouvelle.
+- Renvoie aussi le champ "resume" avec exactement le même texte que celui fourni, sans le modifier.
+- Comme il n'y a pas de nouvelle photo à vérifier, mets toujours "correspond": true.
+
+${jsonFormatInstructions}`;
+      userContent = [
+        { type: "text", text: `Voici le résumé du chapitre :\n\n${existingSummary}` },
       ];
     } else {
       systemPrompt = `Tu es un professeur particulier bienveillant qui aide un enfant de ${childAge || "primaire/collège"} ans à réviser.
@@ -109,7 +129,7 @@ ${jsonFormatInstructions}`;
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 4500,
+        max_tokens: 6000,
         system: systemPrompt,
         messages: [{ role: "user", content: userContent }],
       }),
@@ -170,4 +190,3 @@ ${jsonFormatInstructions}`;
     return { statusCode: 500, body: JSON.stringify({ error: "Erreur interne du serveur." }) };
   }
 };
-
