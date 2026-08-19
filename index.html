@@ -16,6 +16,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   :root{
     --cream:#FEFCF9;
@@ -431,6 +432,9 @@
     <button class="btn-block btn-save" onclick="saveChild()">Enregistrer</button>
     <button class="btn-block btn-danger" id="resetBtn" style="display:none;" onclick="resetChildData()">
       🗑️ Réinitialiser pour la nouvelle année
+    </button>
+    <button class="btn-block btn-danger" id="deleteChildBtn" style="display:none; background:#F5DEE0;" onclick="deleteChild()">
+      ❌ Supprimer ce profil
     </button>
   </div>
 </div>
@@ -988,7 +992,7 @@ function renderImportBlock(){
       </label>
       <label class="import-btn" style="cursor:pointer;">
         📁 Importer des fichiers
-        <input type="file" accept="image/*" multiple style="display:none;" onchange="handleFileSelected(event)" />
+        <input type="file" accept="image/*,application/pdf" multiple style="display:none;" onchange="handleFileSelected(event)" />
       </label>
     </div>
     ${pendingImages.length > 0 ? `
@@ -1001,19 +1005,26 @@ function renderImportBlock(){
           </div>
         `).join("")}
       </div>
-      <p style="font-size:12px; color:#9C9484; margin:0;">${pendingImages.length} photo${pendingImages.length > 1 ? "s" : ""} prête${pendingImages.length > 1 ? "s" : ""}</p>
+      <p style="font-size:12px; color:#9C9484; margin:0;">${pendingImages.length} page${pendingImages.length > 1 ? "s" : ""} prête${pendingImages.length > 1 ? "s" : ""}</p>
       <div style="display:flex; justify-content:center; width:100%;">
         <button class="import-btn analyse-btn" style="background:#A78BFA;" onclick="analyseDocument()">✨ Analyser</button>
       </div>
     ` : ""}
+    ${pdfConverting ? `<p style="font-size:12px; color:#9C9484; margin:4px 0 0;">📄 Conversion du PDF en cours...</p>` : ""}
   `;
 }
+
+let pdfConverting = false;
 
 function handleFileSelected(event){
   const files = Array.from(event.target.files || []);
   if(files.length === 0) return;
 
   files.forEach((file) => {
+    if(file.type === "application/pdf"){
+      convertPdfToImages(file);
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result; // "data:image/jpeg;base64,...."
@@ -1025,6 +1036,41 @@ function handleFileSelected(event){
   });
 
   event.target.value = ""; // permet de re-sélectionner les mêmes fichiers si besoin
+}
+
+function convertPdfToImages(file){
+  pdfConverting = true;
+  renderImportBlock();
+
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const typedArray = new Uint8Array(reader.result);
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+
+      for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++){
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+        const base64 = dataUrl.split(",")[1];
+        pendingImages.push({ base64, mediaType: "image/jpeg", previewUrl: dataUrl });
+      }
+      pdfConverting = false;
+      renderImportBlock();
+    } catch(err){
+      console.error("Erreur conversion PDF:", err);
+      pdfConverting = false;
+      renderImportBlock();
+      alert("Oups, impossible de lire ce PDF. Vérifie qu'il n'est pas protégé par un mot de passe.");
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 function removePendingImage(index){
@@ -1500,6 +1546,7 @@ function openEditor(id){
   renderEmojiGrid();
 
   document.getElementById("resetBtn").style.display = isNew ? "none" : "flex";
+  document.getElementById("deleteChildBtn").style.display = isNew ? "none" : "flex";
   document.getElementById("editorOverlay").style.display = "flex";
 }
 function closeEditor(){
@@ -1574,6 +1621,34 @@ function resetChildData(){
   localStorage.removeItem("etudia_subjects_" + editingId);
   closeEditor();
   alert("C'est fait — le contenu scolaire de ce profil a été réinitialisé.");
+}
+
+function deleteChild(){
+  const child = children.find(c => c.id === editingId);
+  if(!confirm(`Supprimer définitivement le profil de ${child ? child.name : "cet enfant"} ? Toutes ses matières et tous ses chapitres seront perdus. Cette action est irréversible.`)) return;
+
+  const childId = editingId;
+  const matieresRef = enfantsRef.doc(childId).collection("matieres");
+
+  // Suppression en cascade : chapitres de chaque matière, puis les matières, puis le profil.
+  matieresRef.get()
+    .then((matieresSnap) => {
+      const deletions = matieresSnap.docs.map((matiereDoc) =>
+        matiereDoc.ref.collection("chapitres").get().then((chapitresSnap) => {
+          const chapDeletions = chapitresSnap.docs.map((chapDoc) => chapDoc.ref.delete());
+          return Promise.all(chapDeletions).then(() => matiereDoc.ref.delete());
+        })
+      );
+      return Promise.all(deletions);
+    })
+    .then(() => enfantsRef.doc(childId).delete())
+    .then(() => {
+      closeEditor();
+    })
+    .catch((err) => {
+      console.error(err);
+      alert("Oups, la suppression a échoué. Vérifie ta connexion et réessaie.");
+    });
 }
 
 tryAutoLogin();
